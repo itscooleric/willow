@@ -1,0 +1,14 @@
+{
+  "name": "willow",
+  "version": "1.0.0",
+  "description": "Weeping decision trees!!",
+  "main": "willow.js",
+  "scripts": {
+    "test": "node"
+  },
+  "author": "@itscooleric",
+  "license": "GPLv3",
+  "dependencies": {
+    "papaparse": "^4.6.3"
+  }
+}
