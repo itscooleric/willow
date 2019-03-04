@@ -1,7 +1,9 @@
 /**
- * ID3 Decision Tree which shall EVOLVE!
- * Can also re-implement CART
- * https://medium.com/deep-math-machine-learning-ai/chapter-4-decision-trees-algorithms-b93975f7a1f1
+ * Weeping Willows
+ * 
+ * example datasets: http://archive.ics.uci.edu/ml/index.php && ftp://ftp.ics.uci.edu/pub/machine-learning-databases/
+ * ml stuff: ftp://ftp.ics.uci.edu/pub/
+ * 
  */
 const util        = require('./util.js'),
       performance = require('perf_hooks').performance,
@@ -271,36 +273,26 @@ node.prototype = {
         this.tree.admire();
     }
 };
-let d = `sunny, hot, high, weak, no
-sunny, hot, high, strong, no
-overcast, hot, high, weak, yes
-rain, mild, high, weak, yes
-rain, cool, normal, weak, yes
-rain, cool, normal, strong, no
-overcast, cool, normal, strong, yes
-sunny, mild, high, weak, no
-sunny, cool, normal, weak, yes
-rain, mild, normal, weak, yes
-sunny, mild, normal, strong, yes
-overcast, mild, high, strong, yes
-overcast, hot, normal, weak, yes
-rain, mild, high, strong, no`.split('\n').map(r => {
-    let rs = r.split(', ');
-    return {
-        outlook    : rs[0],
-        temperature: rs[1],
-        humidity   : rs[2],
-        wind       : rs[3],
-        play       : rs[4]
+const init = async () => {
+    let sampleData = {
+        weather: `sunny, hot, high, weak, no\nsunny, hot, high, strong, no\novercast, hot, high, weak, yes\nrain, mild, high, weak, yes\nrain, cool, normal, weak, yes\nrain, cool, normal, strong, no\novercast, cool, normal, strong, yes\nsunny, mild, high, weak, no\nsunny, cool, normal, weak, yes\nrain, mild, normal, weak, yes\nsunny, mild, normal, strong, yes\novercast, mild, high, strong, yes\novercast, hot, normal, weak, yes\nrain, mild, high, strong, no`.split('\n').map(r => {
+            let rs = r.split(', ');
+            return {
+                outlook    : rs[0],
+                temperature: rs[1],
+                humidity   : rs[2],
+                wind       : rs[3],
+                play       : rs[4]
+            }
+        }),
+        votes_modified: await util.read('./examples/cars_etc/votes-modified.csv')
     }
-})
-// console.log(calc.entropy(d, 'play'));
-// console.log(calc.gain(d, 'outlook', 'play'));
-// debugger;
+    
+    let dt = new tree({
+        data  : sampleData.votes_modified,
+        target: 'play'
+    });
+    dt.fit();
 
-let dt = new tree({
-    data  : d,
-    target: 'play'
-});
-dt.fit();
+}
 

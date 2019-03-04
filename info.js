@@ -8,6 +8,7 @@
  * 
  * Resources: 
  *      **
+ * https://github.com/harunshimanto/100-Days-Of-ML-Code mabybe
  *      https://www.cs.swarthmore.edu/~meeden/cs63/f05/id3.html
  *      http://www.cs.cmu.edu/~bhiksha/courses/10-601/decisiontrees/
  *      http://www.cs.bc.edu/~alvarez/ML/id3
@@ -30,6 +31,7 @@
  *      http://dms.irb.hr/tutorial/tut_dtrees.php
  * 
  *      ** unchecked
+ * http://www.academia.edu/Documents/in/ID3_Decision_Tree_Algorithm
  *      https://gist.github.com/MohamedFawzy/a184ba9ae3cf2405b91a
  *      https://gist.github.com/Ddedalus/64cd6c407df06083fcbced2d4d4cd763
  *      https://www.python-course.eu/Decision_Trees.php

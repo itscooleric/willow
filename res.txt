@@ -1,0 +1,19 @@
+is outlook == rain?
+	is wind == weak? 1 ~ yes
+	is wind == strong? 1 ~ no
+is outlook == overcast?
+	is temperature == hot? 1 ~ yes
+	is temperature == cool? 1 ~ yes
+	is temperature == mild? 1 ~ yes
+is outlook == sunny?
+	is humidity == high? 1 ~ no
+	is humidity == normal? 1 ~ yes
+
+is outlook == rain?
+	is wind == weak? 1 ~ yes
+	is wind == strong? 1 ~ no
+is outlook == overcast?
+	is outlook == overcast? 1 ~ yes
+is outlook == sunny?
+	is humidity == high? 1 ~ no
+	is humidity == normal? 1 ~ yes
