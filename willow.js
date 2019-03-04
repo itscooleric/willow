@@ -88,8 +88,13 @@ const util        = require('./util.js'),
         this.entropy    = calc.entropy(this.data, options.target);
         this.nodes      = {};
         this.nodeCount  = 0;
-        this.pure       = false,
+        this.pure       = false;
         this.trained    = false;
+        this.queue      = [];
+        if (this.entropy == 0){
+            console.error(`Something interesting has occured, entropy is 0! Could mean there is no target, or that there is nothing to learn`);
+            debugger;
+        }
     },
     node = function decisionTreeNode(options){
         this.data      = options.data;              // the data for this node to use
@@ -111,15 +116,7 @@ const util        = require('./util.js'),
                 tree = this.tree;
             // Add the node to the tree
             if (!this.isRoot) tree.nodes[id] = this;
-            console.log(`~~ Starting ${this.isLeaf?'Leaf':'Branch'} at ${this.feature}_${this.value}`)
-            switch (this.isLeaf){
-                case false:
-                    this.branch();
-                    break;
-                case true:
-                    this.leaf();
-                    break;
-            };
+            this.tree.queue.push(this);
         }
     };
 tree.prototype = { 
@@ -147,13 +144,30 @@ tree.prototype = {
         else console.warn('This model has not yet been trained. Please run tree.fit()')
     },
     admire: function admireTreeLeavesToSeeIfItFits() {
-        let nBranch = Object.keys(this.nodes).filter(a => !this.nodes[a].climbed);
-        if (nBranch.length == 0) {
+        if (this.queue.length == 0) {
             console.log('Fitting complete!')
             this.trained = true;
             this.print();
-            debugger;
-        } else console.log(nBranch.join(', '))
+            // debugger;
+        } else {
+            let nextNode = this.queue.pop();
+            console.log(`~~ Starting ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
+            switch (nextNode.isLeaf){
+                case false:
+                    nextNode.branch();
+                    break;
+                case true:
+                    nextNode.leaf();
+                    break;
+            };
+        };
+        // let nBranch = Object.keys(this.nodes).filter(a => !this.nodes[a].climbed);
+        // if (nBranch.length == 0) {
+        //     console.log('Fitting complete!')
+        //     this.trained = true;
+        //     this.print();
+        //     debugger;
+        // } else console.log(nBranch.join(', '))
     }
 };
 node.prototype = {
@@ -169,10 +183,11 @@ node.prototype = {
             // push   = str => output.push(`${tabs}${str}`);
         if (!this.isLeaf){
             let nKids = this.children;
-            push(`is ${f} ${op} ${v}? [${e}]`);
+            if (!this.isRoot) push(`is ${f} ${op} ${v}? [${e}]`);
+            else push(`TREE ROOT\n-------`)
             Object.keys(nKids).map(name => nKids[name].print())
         } else {
-            let nProbs = this.probs;
+            let nProbs = this.children;
             Object.keys(nProbs).map(prob => push(`is ${f} ${op} ${v}? ${nProbs[prob]} ~ ${prob}`))
         }
     },
@@ -207,6 +222,7 @@ node.prototype = {
             nProbs[v] = tProbs[v]/nLength;
             console.log(`\t${v} ~ ${nProbs[v].percent(2)}`);
         });
+        this.tree.admire();
         // else this.tree[nBranch].branch();
         // Set up the probabilities of each outcome in this section for when running predict
     },
@@ -230,17 +246,18 @@ node.prototype = {
             };
             maxgain = curgain > maxgain.gain?gains[f]:maxgain;
         })
-        let bFeature = nFeatures.splice(maxgain.i, 1)[0],   // the feature the new node will branch on
+        let bFeature = nFeatures[maxgain.i],   // the feature the new node will branch on
             bGain    = maxgain.gain,                        // information gain from the current node
             bEntropy = nEntropy - bGain,                     // the starting entropy for the new node
             bData    = {},                                  // the data that will be passed on to the different nodes
             bLeaf    = false;
+        // debugger;
         /**
          * * Should write the is leaf function here
          * * First check if there is any gain
          * * Then compare to any of the parameters set for the node such as max depth or early stopping
          */
-        if (bEntropy == 0) {
+        if (bEntropy == 0 || bGain <= 0) {
             bLeaf = true;
             console.log(`Leafing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bGain} to ${bEntropy}`)
         }
@@ -255,7 +272,9 @@ node.prototype = {
         }
         // To make sure that everything has been done
         // debugger;
-        Object.keys(bData).map(bValue => {
+        let branchValues = Object.keys(bData),
+            branchLength = branchValues.length;
+        branchValues.map((bValue, bIndex) => {
             console.log(`Should be spawning ${bValue}`)
             this.children[`${bFeature}_${bValue}`] = new node({
                 data   : bData[bValue],
@@ -285,14 +304,18 @@ const init = async () => {
                 play       : rs[4]
             }
         }),
-        votes_modified: await util.read('./examples/cars_etc/votes-modified.csv')
+        vote: await util.read('./examples/vote/train.csv')
     }
-    
     let dt = new tree({
-        data  : sampleData.votes_modified,
-        target: 'play'
+        data  : sampleData.vote,
+        target: 'class'
     });
     dt.fit();
-
+    
+    // new tree({
+    //     data  : sampleData.weather,
+    //     target: 'play'
+    // }).fit()
 }
+init();
 
