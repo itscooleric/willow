@@ -1,0 +1,10 @@
+
+TREE ROOT
+-------
+outlook == overcast: 1 ~ yes
+outlook == sunny:
+	humidity == high: 1 ~ no
+	humidity == normal: 1 ~ yes
+outlook == rain:
+	wind == weak: 1 ~ yes
+	wind == strong: 1 ~ no

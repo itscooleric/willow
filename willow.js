@@ -61,7 +61,35 @@ const util        = require('./util.js'),
             })
             return cent;
         },
-        impurity: function getGINIImpurityIndex(data, fx, fy) {
+        gini: function getGINIImpurityIndex(data, fx, fy) {
+            // Example: https://sefiks.com/2018/08/27/a-step-by-step-cart-decision-tree-example/
+            // Both types: https://medium.com/deep-math-machine-learning-ai/chapter-4-decision-trees-algorithms-b93975f7a1f1
+            // Parameters: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier
+
+            // WATERMELON RESUME HERE!
+            // Gini = 1 – Σ (Pi)2 for i=1 to number of classes
+            // Gini(Outlook=Sunny) = 1 – (2/5)2 – (3/5)2 = 1 – 0.16 – 0.36 = 0.48
+            // Gini(Outlook=Overcast) = 1 – (4/4)2 – (0/4)2 = 0
+            // Gini(Outlook=Rain) = 1 – (3/5)2 – (2/5)2 = 1 – 0.36 – 0.16 = 0.48
+            // Then, we will calculate weighted sum of gini indexes for outlook feature.
+            // Gini(Outlook) = (5/14) x 0.48 + (4/14) x 0 + (5/14) x 0.48 = 0.171 + 0 + 0.171 = 0.342
+            let hg   = {},
+                xArr = [];
+            for (let i = 0, il = data.length; i < il; i++){
+                let a = data[i],
+                    vx = a[fx],
+                    vy = a[fy];
+                if (!hg[vx]) {
+                    hg[vx] = {sum: 0};
+                    xArr.push(vx);
+                }
+                if (!hg[vx][vy]) hg[vx][vy] = 0;
+                hg[vx].sum++;
+                hg[vx][vy]++;
+            }
+            xArr.map(vx => {
+                
+            })
             //= 1 — P^2(Target=0) — P^2(Target=1)
 
         },
@@ -74,8 +102,21 @@ const util        = require('./util.js'),
                 ht -= cur_val;
                 gainSum += cur_val;
             })
-            // console.log(gainSum)
             return ht;
+        },
+        compare: function compareValues(val1, val2, type = '=='){
+            switch(type){
+                case '<=':
+                    return val1 <= val2;
+                case '>=':
+                    return val1 >= val2;
+                case '<':
+                    return val1 < val2;
+                case '>':
+                    return val1 > val2;
+                default:
+                    return val1 == val2;
+            }
         }
     },
     /**
@@ -102,7 +143,7 @@ const util        = require('./util.js'),
         this.children  = {};                        // where the children of the node are
         this.parent    = options.parent  || false;
         this.depth     = options.depth   || 0;
-        this.entropy   = options.entropy;           // starting entropy for this node
+        this.entropy   = calc.entropy(this.data, this.tree.target);//options.entropy;           // starting entropy for this node
         this.feature   = options.feature ||'root';  // feature this node was branched on
         this.value     = options.value   ||'root';  // value of the feature of this node
         this.isLeaf    = options.isLeaf  || false;  // if it's a leaf, we won't split
@@ -110,9 +151,10 @@ const util        = require('./util.js'),
         this.features  = this.tree.features;
         this.climbed   = options.isRoot || options.isLeaf;
         this.prototype = {};
+        this.id        = `${this.feature}_${this.value}`;
         if (!options.isRoot){
             // Generate the node id
-            let id   = `${this.feature}_${this.value}`,
+            let id   = this.id,
                 tree = this.tree;
             // Add the node to the tree
             if (!this.isRoot) tree.nodes[id] = this;
@@ -131,15 +173,24 @@ tree.prototype = {
             isRoot : true,
             tree   : this
         });
-        this.nodes.root.branch();
+        if (this.data[0][this.target]) this.nodes.root.branch();
+        else {
+            console.error('Target variable could not be found! Terminating')
+            debugger;
+        }
     },
-    print: function logTreeQuestions(){
+    print: async function logTreeQuestions(){
+        this.output = '';
         if (this.trained) {
             console.log(this.nodes)
             console.log(`Printing the tree!`)
             // debugger;
             this.nodes.root.print();
-            console.log(`Printing complete!`)
+            console.log(this.output);
+            await util.write(this.output, 'willow-result.txt');
+            console.log(`Printing complete!`);
+            // console.log(this.nodes);
+            // debugger;
         }
         else console.warn('This model has not yet been trained. Please run tree.fit()')
     },
@@ -150,6 +201,7 @@ tree.prototype = {
             this.print();
             // debugger;
         } else {
+            // can be optimized here using pop instead or an object
             let nextNode = this.queue.pop();
             console.log(`~~ Starting ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
             switch (nextNode.isLeaf){
@@ -161,13 +213,6 @@ tree.prototype = {
                     break;
             };
         };
-        // let nBranch = Object.keys(this.nodes).filter(a => !this.nodes[a].climbed);
-        // if (nBranch.length == 0) {
-        //     console.log('Fitting complete!')
-        //     this.trained = true;
-        //     this.print();
-        //     debugger;
-        // } else console.log(nBranch.join(', '))
     }
 };
 node.prototype = {
@@ -179,16 +224,20 @@ node.prototype = {
             op     = '==',                                 // operator - more useful later when using continuous variables
             output = [],
             tabs   = new Array(d).join('\t'),
-            push   = str => console.log(`${tabs}${str}`);
+            push   = str => this.tree.output += `\n${tabs}${str}`;
             // push   = str => output.push(`${tabs}${str}`);
         if (!this.isLeaf){
             let nKids = this.children;
-            if (!this.isRoot) push(`is ${f} ${op} ${v}? [${e}]`);
+            if (!this.isRoot) push(`${f} ${op} ${v}:`);
             else push(`TREE ROOT\n-------`)
-            Object.keys(nKids).map(name => nKids[name].print())
+            Object.keys(nKids)
+                .sort(a => nKids[a].isLeaf?-1:1)
+                .map(name => nKids[name].print())
         } else {
             let nProbs = this.children;
-            Object.keys(nProbs).map(prob => push(`is ${f} ${op} ${v}? ${nProbs[prob]} ~ ${prob}`))
+            // Object.keys(nProbs).map(prob => push(`${(+nProbs[prob]*100).toFixed(2)}% ${prob}`))
+
+            Object.keys(nProbs).map(prob => push(`${f} ${op} ${v}: ${nProbs[prob]} ~ ${prob}`))
         }
     },
     /**
@@ -215,71 +264,59 @@ node.prototype = {
             }
             tProbs[v]++;
         };
-        // TODO: Maybe add a bayesian option
-        // TODO: Also add error handling for if people choose something that hasn't been seen
         console.log(`Leaf ${nFeature}_${nValue} at ${nEntropy}:`)
         nValues.map(v => {
             nProbs[v] = tProbs[v]/nLength;
             console.log(`\t${v} ~ ${nProbs[v].percent(2)}`);
         });
         this.tree.admire();
-        // else this.tree[nBranch].branch();
-        // Set up the probabilities of each outcome in this section for when running predict
     },
-    branch: function createBranchingNode () {
+    _selectFeature: function selectFeatureToSplitOn(nData =  this.data, nFeatures = this.features, nEntropy = this.entropy, target = this.tree.target) {
+        let maxgain = {gain: 0},
+            gains = {};
+        if (nData.length > 0){
+            console.log(`Selecting feature from ${nFeatures.join(', ')}`)
+            nFeatures.map((f, i) => {
+                console.log(f);
+                let curgain = calc.gain(nData, f, target, nEntropy);
+                gains[f] = {
+                    feature: f,
+                    gain   : curgain,
+                    i      : i
+                };
+                maxgain = curgain > maxgain.gain?gains[f]:maxgain;
+            })
+        } else console.log(`No data for ${this.id}, must be a leaf`);
+        return maxgain;
+    },
+    branch: function createBranchingNode (options = {}) {
         let nData     = this.data,
             nValue    = this.value,
             nFeature  = this.feature,
-            nFeatures = this.features,
-            nEntropy  = this.entropy,
             nDepth    = this.depth,
-            gains     = {},
-            maxgain   = { gain: 0 },
-            t         = this.tree.target;
-        // debugger;
-        nFeatures.map((f, i) => {
-            let curgain = calc.gain(nData, f, t, nEntropy);
-            gains[f] = {
-                feature: f,
-                gain   : curgain,
-                i      : i
-            };
-            maxgain = curgain > maxgain.gain?gains[f]:maxgain;
-        })
-        let bFeature = nFeatures[maxgain.i],   // the feature the new node will branch on
-            bGain    = maxgain.gain,                        // information gain from the current node
-            bEntropy = nEntropy - bGain,                     // the starting entropy for the new node
-            bData    = {},                                  // the data that will be passed on to the different nodes
-            bLeaf    = false;
-        // debugger;
-        /**
-         * * Should write the is leaf function here
-         * * First check if there is any gain
-         * * Then compare to any of the parameters set for the node such as max depth or early stopping
-         */
-        if (bEntropy == 0 || bGain <= 0) {
-            bLeaf = true;
-            console.log(`Leafing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bGain} to ${bEntropy}`)
-        }
-        if (!bLeaf) console.log(`Branch ${nFeature}_${nValue} branch @ ${bFeature} gains ${bGain} to ${bEntropy}`);
-        // Determine how to split it
-        // debugger;
+            t         = this.tree.target,
+            maxgain   = this._selectFeature();
+        let bFeature  = maxgain.feature,        // the feature the new node will branch on
+            bGain     = maxgain.gain,           // information gain from the current node
+            bData     = {},                     // the data that will be passed on to the different nodes
+            bValues   = [];
         while (nData.length > 0){
             let r = nData.pop(),            // current record in the dataset
                 v = r[bFeature];            // value of the bFeature in the current record
             if (!bData[v]) bData[v] = [];   // checks to see if value is represented in bData
             bData[v].push(r);               // Add record to the node data set
-        }
-        // To make sure that everything has been done
-        // debugger;
-        let branchValues = Object.keys(bData),
-            branchLength = branchValues.length;
-        branchValues.map((bValue, bIndex) => {
-            console.log(`Should be spawning ${bValue}`)
-            this.children[`${bFeature}_${bValue}`] = new node({
-                data   : bData[bValue],
+            bValues.push(v);
+        };
+        bValues.map(bv => {
+            console.log(`Should be spawning ${bv}`);
+            let bEntropy = calc.entropy(bData[bv], t),
+                bLeaf    = bEntropy == 0;
+            console.log(`${bLeaf?'Leaf':'Branch'}ing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bGain} to ${bEntropy}`);
+            this.children[`${bFeature}_${bv}`] = new node({
+                data   : bData[bv],
                 feature: bFeature,
-                value  : bValue,           // value is the key of node data
+                value  : bv,
+                // value is the key of node data
                 gain   : bGain,
                 entropy: bEntropy,
                 tree   : this.tree,
@@ -293,29 +330,34 @@ node.prototype = {
     }
 };
 const init = async () => {
-    let sampleData = {
-        weather: `sunny, hot, high, weak, no\nsunny, hot, high, strong, no\novercast, hot, high, weak, yes\nrain, mild, high, weak, yes\nrain, cool, normal, weak, yes\nrain, cool, normal, strong, no\novercast, cool, normal, strong, yes\nsunny, mild, high, weak, no\nsunny, cool, normal, weak, yes\nrain, mild, normal, weak, yes\nsunny, mild, normal, strong, yes\novercast, mild, high, strong, yes\novercast, hot, normal, weak, yes\nrain, mild, high, strong, no`.split('\n').map(r => {
-            let rs = r.split(', ');
-            return {
-                outlook    : rs[0],
-                temperature: rs[1],
-                humidity   : rs[2],
-                wind       : rs[3],
-                play       : rs[4]
-            }
-        }),
-        vote: await util.read('./examples/vote/train.csv')
+    let sample = {
+        weather: {
+            data: `sunny, hot, high, weak, no\nsunny, hot, high, strong, no\novercast, hot, high, weak, yes\nrain, mild, high, weak, yes\nrain, cool, normal, weak, yes\nrain, cool, normal, strong, no\novercast, cool, normal, strong, yes\nsunny, mild, high, weak, no\nsunny, cool, normal, weak, yes\nrain, mild, normal, weak, yes\nsunny, mild, normal, strong, yes\novercast, mild, high, strong, yes\novercast, hot, normal, weak, yes\nrain, mild, high, strong, no`.split('\n').map(r => {
+                let rs = r.split(', ');
+                return {
+                    outlook    : rs[0],
+                    temperature: rs[1],
+                    humidity   : rs[2],
+                    wind       : rs[3],
+                    play       : rs[4]
+                }
+            }),
+            target: 'play'
+        },
+        vote: {
+            data  : await util.read('./examples/vote/train.csv'),
+            target: 'class'
+        },
+        vowel: {
+            data  : await util.read('./examples/cars_etc/vowel.csv'),
+            target: 'class'
+        },
+        lenses: {
+            data  : await util.read('./examples/cars_etc/lenses.csv'),
+            target: 'lense'
+        },
     }
-    let dt = new tree({
-        data  : sampleData.vote,
-        target: 'class'
-    });
-    dt.fit();
-    
-    // new tree({
-    //     data  : sampleData.weather,
-    //     target: 'play'
-    // }).fit()
+    new tree(sample.weather).fit()
 }
 init();
 
