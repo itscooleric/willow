@@ -5,33 +5,25 @@
  * physics velocity
  * equations of motion
  * variance, skewness, kurtosis, entropy
- * 
+ * Bayes:
+ *      we know the probability of having a fever if we have the flu
+ *          what is probability of having the flu if you have a fever?
+ *      we know the probability of odu students getting a job
+ *          wht is the probability of getting a job if you are an odu students
+ *      we kow the probability of the price rises when rsi is above 70
+ *          what is the probability of having an rsi above 70 when the price rises?
+ *      vs we know the probability of having an rsi above 70 when the price rises
+ *          what we wanna know is the probability of the price rising when the rsi is above 70
  * Resources: 
+ *      machine learning basics: https://towardsdatascience.com/machine-learning-algorithms-in-laymans-terms-part-1-d0368d769a7b
  *      **
- * https://github.com/harunshimanto/100-Days-Of-ML-Code mabybe
- *      https://www.cs.swarthmore.edu/~meeden/cs63/f05/id3.html
- *      http://www.cs.cmu.edu/~bhiksha/courses/10-601/decisiontrees/
- *      http://www.cs.bc.edu/~alvarez/ML/id3
- * 
- *      CS 446: Machine Learning ~ http://l2r.cs.uiuc.edu/Teaching/CS446-17/lectures.html
- *      Another crs ~ http://www.ke.tu-darmstadt.de/lehre/archiv/ws0809/mldm
- *      https://people.cs.umass.edu/~utgoff/papers/mlj-id5r.pdf
- * 
- *      ** additional resources
- *      https://medium.com/@rishabhjain_22692/decision-trees-it-begins-here-93ff54ef134
- *      https://medium.com/@rishabhjain_22692/decision-trees-it-begins-here-93ff54ef134
- *      https://scikit-learn.org/stable/modules/tree.html
- *      https://en.wikipedia.org/wiki/ID3_algorithm
- *      https://towardsdatascience.com/boosting-the-accuracy-of-your-machine-learning-models-f878d6a2d185
- *      https://towardsdatascience.com/decision-trees-in-machine-learning-641b9c4e8052
- *      https://ml.berkeley.edu/blog/2017/12/26/tutorial-5/
- *      https://medium.com/deep-math-machine-learning-ai/chapter-4-decision-trees-algorithms-b93975f7a1f1
- *      https://www.hackerearth.com/practice/machine-learning/machine-learning-algorithms/ml-decision-tree/tutorial/
- *      https://www.analyticsvidhya.com/blog/2016/04/complete-tutorial-tree-based-modeling-scratch-in-python/
- *      http://dms.irb.hr/tutorial/tut_dtrees.php
+ *      CS 446: http://l2r.cs.uiuc.edu/Teaching/CS446-17/lectures.html
+ *      German Course: http://www.ke.tu-darmstadt.de/lehre/archiv/ws0809/mldm
+ *      CS 831: http://www2.cs.uregina.ca/~dbd/cs831/ - C4.5 and ID3 examples
+ *      WS 809: http://www.ke.tu-darmstadt.de/lehre/archiv/ws0809/mldm
  * 
  *      ** unchecked
- * http://www.academia.edu/Documents/in/ID3_Decision_Tree_Algorithm
+ *      http://www.academia.edu/Documents/in/ID3_Decision_Tree_Algorithm
  *      https://gist.github.com/MohamedFawzy/a184ba9ae3cf2405b91a
  *      https://gist.github.com/Ddedalus/64cd6c407df06083fcbced2d4d4cd763
  *      https://www.python-course.eu/Decision_Trees.php

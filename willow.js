@@ -1,5 +1,6 @@
 /**
  * Weeping Willows
+ * the man himself: http://www.stat.wisc.edu/~loh/treeprogs/
  * 
  * example datasets: http://archive.ics.uci.edu/ml/index.php && ftp://ftp.ics.uci.edu/pub/machine-learning-databases/
  * ml stuff: ftp://ftp.ics.uci.edu/pub/
