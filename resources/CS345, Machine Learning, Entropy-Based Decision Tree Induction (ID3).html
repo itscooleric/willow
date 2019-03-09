@@ -1,0 +1,239 @@
+<html>
+
+<head>
+<title>
+CS345, Machine Learning, Entropy-Based Decision Tree Induction (ID3)
+</title>
+</head>
+
+<body bgcolor="ffffff">
+
+<center>
+<img src="http://bc.edu/meta-elements/gif/logo-bc-1.gif">
+<h2>
+CS345, Machine Learning
+<br>Prof. Alvarez
+<p>
+Entropy-Based Decision Tree Induction (as in ID3 and C4.5)
+</h2>
+</center>
+
+<h3>Decision Trees</h3>
+
+A decision tree is simply a graphical representation of a <i>sequential
+decision process</i>, one in which the final outcome is determined by
+the answers to a special sequence of questions. As a model, think of 
+the game "20 questions", in which one of the two players must guess
+what the other is thinking using only the answers to a sequence of
+yes/no questions. We want to be able to guess correctly based on a 
+uniform set of questions for each dataset. Note that the question to 
+ask next will depend on the answers obtained so far, just as in "20 
+questions"; this is what gives rise to branching in the decision tree.
+Unlike the game, we will no longer be able to restrict the number
+of questions in advance. However, we will strive to minimize the
+average number of questions in each case.
+<p>
+We assume that a dataset with only nominal instance attributes is given and 
+that one of the attributes of this dataset is chosen as the target attribute. 
+We wish to predict 
+the value of the target attribute for a given instance given the values
+of a selected sequence of other attributes for the same instance. 
+These values are the "answers" to our "questions".
+The goal of decision tree induction is to design as short a question
+sequence as possible while yielding good predictive performance.
+One approach to this task involves entropy, a fundamental quantity
+in information theory.
+We will briefly describe entropy and the entropy approach to decision 
+tree induction below.
+
+<h3>Uncertainty and Entropy</h3>
+
+Entropy is a measure of the amount of uncertainty associated with a
+set of probabilities. To motivate the idea of entropy informally,
+suppose that there are n possible outcomes in a certain context.
+If each of these n outcomes is estimated to occur with probability 1/n, 
+then uncertainty is at a maximum - we have no reason to lean toward 
+any one of the outcomes when predicting which of them will occur;
+in this case we are nowhere near being able to rationally choose
+among the possibilities.
+On the other hand, if one of the outcomes is estimated to occur 
+with probability 0.99 (99% of the time), then the amount of uncertainty 
+is quite small; in this case, predicting that this particular outcome 
+will occur will be correct most of the time. 
+<p>
+Clearly, the amount of uncertainty is related to the degree of success 
+that can be expected in the task of predicting the outcome. In decision
+tree induction, asking more questions will change the probabilities,
+normally reducing the amount of uncertainty remaining. The magnitude
+of the remaining uncertainty can be thought of as a heuristic estimate
+of the number of additional questions that we will have to ask before 
+the outcome is certain.
+
+<h4>Definition of entropy</h4>
+
+Given n probabilities p1, p2, ... pn that sum to 1, the associated
+entropy is defined as the following quantity H:
+<pre>
+	H(p1, p2, ... pn) = sum from i=1 to i=n of -pi*log(pi)
+</pre>
+The logarithm is usually taken in base 2. In this case, the entropy
+can be interpreted as the number of bits of information needed to
+resolve the uncertainty associated with the probabilities p1, ... pn.
+
+<h4>Examples</h4>
+
+<ol>
+<li> The entropy of a uniform distribution over n outcomes is log n.
+<li> The entropy of a deterministic distribution (in which one of the 
+	outcomes has probability 1 and the others have probability 0)
+	is 0.
+</ol>
+
+The entropy may be shown to reach a maximum for a uniform distribution.
+
+<h4>Definition of class entropy</h4>
+
+In machine learning techniques for classification, we are interested
+in predicting the value of a selected <i>class</i> attribute based on
+the values of the remaining (non-class) attributes. In this context,
+entropy may be used to rank attributes in terms of the reduction in 
+the uncertainty of the class label for a given instance that can be 
+expected if the value of the attribute becomes known for that instance.
+<p>
+We define the <i>class entropy</i> of an attribute a as follows:
+<pre>
+H<sub>c</sub>(a) = sum of #(a=v)/#(all a-values)* H(class distribution | a=v) 
+</pre>
+where: 
+<ol>
+<li> the sum is calculated over all values v of a,
+<li> #(v=a) is the number of instances for which a has the value v,
+<li> #(all a-values) is the total number of instances being considered,
+<li> H(class distribution | a=v) is the set of probabilities of the
+various classes over the instances that satisfy a=v
+</ol>
+The point is that the probability distribution of the class will
+depend on the specific value of the selected attributed a. The
+class entropy is a weighted average over all of these possibilities.
+Each possible value of the selected attribute a is weighted in
+proportion to its occurrence among the instances being considered.
+
+<h3>The ID3 Algorithm</h3>
+
+The ID3 algorithm was invented by J.R. Quinlan ("Induction of 
+Decision Trees", <i>Machine Learning</i>, vol 1, issue 1, 1986,
+81-106).   
+ID3 uses the class entropy to decide which attribute to query on at each 
+node of a decision tree. <i>Note that entropy in this context is relative
+to the previously selected class attribute.</i>
+The class entropy measures the average uncertainty of the class label
+still remaining after learning the value of the given attribute at a
+given node of the partially constructed tree.
+The class entropy may be interpreted as a heuristic estimate of the number 
+of additional questions that must be asked (nodes that must be visited) 
+in order to resolve the uncertainty associated with the class attribute.
+At each stage of the construction, ID3 chooses to split on the attribute 
+for which the average remaining uncertainty is minimized. Heuristically,
+this should minimize the expected number of remaining questions, and
+thus the overall height of the decision tree.
+
+<h4>ID3 pseudocode</h4>
+
+<pre>
+	Inputs: (D, A, C), where:
+		D is a dataset with only nominal instance attributes A 
+		C is the class attribute
+
+	Output: a decision tree T representing a sequential decision process for
+	classifying instances (predicting the values of the class attribute C);
+	each node of T is labeled with a non-class attribute of A
+
+	Informal Inductive Bias: minimize the average height of the tree
+
+	Procedure:
+
+	if the set of remaining non-class attributes is empty 
+	or if all of the instances in D are in the same class
+
+		return an empty tree
+
+	else {
+
+		compute the class entropy of each attribute over the dataset D
+			let a* be an attribute with minimum class entropy	
+
+		create a root node for a tree T; label it with a* 
+
+		for each value b of attribute a* {
+
+			let T(a*=b) be the tree computed recursively by ID3 on input (D|a*=b, A-a*, C), where:
+				D|a*=b contains all instances of D for which a* has the value b
+				A-a* consists of all attributes of A except a*
+
+			attach T(a*=b) to the root of T as a subtree
+
+		}
+		
+		return the resulting decision tree T
+
+	}
+
+</pre>
+
+<h4>Example of ID3 entropy computation</h4>
+
+Taking the weather dataset, for example:
+<i>if the target attribute for classification is the play attribute,
+then the entropy must be computed relative to that attribute.</i>
+<p>
+Here goes the entropy computation at the root of the tree in this case:
+
+<pre>
+To compute entropy(outlook):
+
+The outlook attribute has three values: sunny, overcast, and rainy.
+
+Of the 14 instances in the dataset, 
+
+        5 have outlook=sunny
+        4 have outlook=overcast
+        5 have outlook=rainy
+
+That splits the training instances into three subsets as described.
+Let's check the uncertainty of the class (play) attribute in each subset:
+
+        of the 5 instances with outlook=sunny,
+                3 have play=no
+                2 have play=yes
+        the entropy associated with this subset is 
+        entropy(3/5, 2/5) = (3/5)*log2(5/3) + (2/5)*log2(5/2) = 0.97
+
+        of the 4 instances with outlook=overcast,
+                4 have play=yes
+                0 have play=no
+        the entropy associated with this subset is 
+        entropy(1, 0) = 1*log2(1) + 0*log2(0) = 0 
+        
+        of the 5 instances with outlook=rainy,
+                3 have play=yes
+                2 have play=no
+        the entropy associated with this subset is 
+        entropy(3/5, 2/5) = (3/5)*log2(5/3) + (2/5)*log2(5/2) = 0.97
+
+The <i>average</i> uncertainty still remaining after asking about the outlook
+attribute is therefore the following weighted average:
+
+        entropy(outlook) = (5/14)*0.97 + (4/14)*0 + (5/14)*0.97 = 0.69
+
+The coefficients here are determined by what ratio of the training instances 
+fall into each of the three subsets associated with the three possible values 
+of the outlook attribute.
+
+ID3 would then proceed to calculate the entropy of each of the other non-class
+attributes in order to choose which attribute to split on at the root level.
+</pre>
+
+</body>
+
+</html>
+

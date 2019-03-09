@@ -7,119 +7,8 @@
  * 
  */
 const util        = require('./util.js'),
+      crit        = require('./crit.js'),
       performance = require('perf_hooks').performance,
-      calc = {
-        /**
-         * Caculates entropy
-         * @param arr array of objects to look at
-         * @param key the key of the object to look at
-         * @returns entropy as an integer
-         */
-        entropy: function getEntropy(arr, key) {
-            let il      = arr.length,
-                counts  = {},           // counts of different values
-                entropy = 0.0,          
-                et = arr[0].constructor == Object? xi => xi[key]+'':xi => xi+''; // Extract the value cleanly by converting to string
-            // Runs through an array
-            for (let i = 0; i < il; i++){
-                let v = et(arr[i]);             // clean the value
-                if (!counts[v]) counts[v] = 0;  //check if there is a count
-                counts[v]++;                    // add to the count
-            }
-            Object.values(counts).map(v => {
-                let p = v/il;
-                entropy += (-p*(Math.log2(p)))
-            })
-            return entropy;
-        },
-        /**
-         * Calculates class entropy for a given array of objects based on an x and y feature name
-         * @param {Array} arr array of objects to analyze
-         * @param {String} keyx the iv to look at
-         * @param {String} keyy the target variable or dv to look at
-         */
-        centropy: function getClassEntropy(arr, keyx, keyy){
-            let op      = {},
-                cent    = {},
-                // Extract the value cleanly by converting to a string
-                ex = arr[0].constructor == Object? xi => xi[keyx]+'':xi => xi+'',
-                ey = arr[0].constructor == Object? yi => yi[keyy]+'':yi => yi+'',
-                il = arr.length;
-            for (let i = 0; i < il; i++) {
-                let x = ex(arr[i]),
-                    y = ey(arr[i]);
-                if (!op[x]) {
-                    op[x]   = [];
-                    cent[x] = {n: 0};
-                }
-                op[x].push(y);
-                cent[x].n++;
-            }
-            // Get the entropy for each of the variables
-            Object.keys(op).map(v => {
-                cent[v].h = calc.entropy(op[v]);
-                cent[v].p = cent[v].n/il;
-            })
-            return cent;
-        },
-        gini: function getGINIImpurityIndex(data, fx, fy) {
-            // Example: https://sefiks.com/2018/08/27/a-step-by-step-cart-decision-tree-example/
-            // Both types: https://medium.com/deep-math-machine-learning-ai/chapter-4-decision-trees-algorithms-b93975f7a1f1
-            // Parameters: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html#sklearn.tree.DecisionTreeClassifier
-
-            // WATERMELON RESUME HERE!
-            // Gini = 1 – Σ (Pi)2 for i=1 to number of classes
-            // Gini(Outlook=Sunny) = 1 – (2/5)2 – (3/5)2 = 1 – 0.16 – 0.36 = 0.48
-            // Gini(Outlook=Overcast) = 1 – (4/4)2 – (0/4)2 = 0
-            // Gini(Outlook=Rain) = 1 – (3/5)2 – (2/5)2 = 1 – 0.36 – 0.16 = 0.48
-            // Then, we will calculate weighted sum of gini indexes for outlook feature.
-            // Gini(Outlook) = (5/14) x 0.48 + (4/14) x 0 + (5/14) x 0.48 = 0.171 + 0 + 0.171 = 0.342
-            let hg   = {},
-                xArr = [];
-            for (let i = 0, il = data.length; i < il; i++){
-                let a = data[i],
-                    vx = a[fx],
-                    vy = a[fy];
-                if (!hg[vx]) {
-                    hg[vx] = {sum: 0};
-                    xArr.push(vx);
-                }
-                if (!hg[vx][vy]) hg[vx][vy] = 0;
-                hg[vx].sum++;
-                hg[vx][vy]++;
-            }
-            xArr.map(vx => {
-                
-            })
-            //= 1 — P^2(Target=0) — P^2(Target=1)
-
-        },
-        gain: function getInformationGain(data, fx, fy, baseEntropy){
-            let ht      = baseEntropy || calc.entropy(data, fy),
-                hh      = calc.centropy(data, fx, fy),
-                gainSum = 0;
-            Object.values(hh).map(k => {
-                let cur_val = (k.h * k.p);
-                ht -= cur_val;
-                gainSum += cur_val;
-            })
-            return ht;
-        },
-        compare: function compareValues(val1, val2, type = '=='){
-            switch(type){
-                case '<=':
-                    return val1 <= val2;
-                case '>=':
-                    return val1 >= val2;
-                case '<':
-                    return val1 < val2;
-                case '>':
-                    return val1 > val2;
-                default:
-                    return val1 == val2;
-            }
-        }
-    },
     /**
      * Initialize a decision tree
      */
@@ -222,7 +111,8 @@ node.prototype = {
             f      = this.feature,
             v      = this.value,
             e      = this.entropy,
-            op     = '==',                                 // operator - more useful later when using continuous variables
+            op     = '==',                                 
+            // operator - more useful later when using continuous variables
             output = [],
             tabs   = new Array(d).join('\t'),
             push   = str => this.tree.output += `\n${tabs}${str}`;
@@ -251,7 +141,7 @@ node.prototype = {
             nLength  = nData.length,
             nEntropy = this.entropy,
             nFeature = this.feature,
-            nValue   = this.value
+            nValue   = this.value,
             nProbs   = this.children,
             tProbs   = {},
             nValues  = [],
@@ -274,7 +164,7 @@ node.prototype = {
     },
     _selectFeature: function selectFeatureToSplitOn(nData =  this.data, nFeatures = this.features, nEntropy = this.entropy, target = this.tree.target) {
         let maxgain = {gain: 0},
-            gains = {};
+            gains   = {};
         if (nData.length > 0){
             console.log(`Selecting feature from ${nFeatures.join(', ')}`)
             nFeatures.map((f, i) => {
@@ -296,9 +186,9 @@ node.prototype = {
             nFeature  = this.feature,
             nDepth    = this.depth,
             t         = this.tree.target,
-            maxgain   = this._selectFeature();
-        let bFeature  = maxgain.feature,        // the feature the new node will branch on
-            bGain     = maxgain.gain,           // information gain from the current node
+            bestSplit = this._selectFeature();
+        let bFeature  = bestSplit.feature,      // the feature the new node will branch on
+            bScore    = bestSplit.gain,         // information gain from the current node
             bData     = {},                     // the data that will be passed on to the different nodes
             bValues   = [];
         while (nData.length > 0){
@@ -312,13 +202,13 @@ node.prototype = {
             console.log(`Should be spawning ${bv}`);
             let bEntropy = calc.entropy(bData[bv], t),
                 bLeaf    = bEntropy == 0;
-            console.log(`${bLeaf?'Leaf':'Branch'}ing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bGain} to ${bEntropy}`);
+            console.log(`${bLeaf?'Leaf':'Branch'}ing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bScore} to ${bEntropy}`);
             this.children[`${bFeature}_${bv}`] = new node({
                 data   : bData[bv],
                 feature: bFeature,
                 value  : bv,
                 // value is the key of node data
-                gain   : bGain,
+                score   : bScore,
                 entropy: bEntropy,
                 tree   : this.tree,
                 parent : this.branch,
@@ -330,6 +220,16 @@ node.prototype = {
         this.tree.admire();
     }
 };
+const profiler = (fn, count = 1000) => {
+    let ret = [];
+    for (let i = 0; i < count; i++){
+        let startProfile = performance.now();
+        fn()
+        let finishProfile = performance.now();
+        ret.push(finishProfile - startProfile);
+    }
+    return Object.assign({data: ret}, ret.stats())
+}
 const init = async () => {
     let sample = {
         weather: {
@@ -358,6 +258,13 @@ const init = async () => {
             target: 'lense'
         },
     }
+    let sampleKeys = ['outlook', 'humidity', 'temperature', 'wind'];
+    console.log(`Multiple`)
+    console.log(profiler(() => sampleKeys.map(a => calc.gini(sample.weather.data,a, 'play')), 1000000));
+    console.log(`\nOptimized`);
+    console.log(profiler(() => calc.giniOptimized(sample.weather.data, 'play'), 1000000));
+    // calc.giniOptimized(sample.weather.data, 'play');
+    debugger;
     new tree(sample.weather).fit()
 }
 init();

@@ -1,0 +1,1010 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+</head>
+<body>
+<div style="text-align: center; font-weight: bold;"><big><big><big>Testing
+Your Decision Tree<br>
+</big></big></big></div>
+<br>
+Here's a fairly simple dataset that you can use to test your decision
+tree.<br>
+<br>
+<div style="margin-left: 40px; font-family: monospace;">%<br>
+% This is a simple dataset for testing your decision tree<br>
+% (The opinions expressed in this file are not necessarily<br>
+% endorsed by anyone with good taste in pizza.)<br>
+%<br>
+@RELATION pizza<br>
+<br>
+@ATTRIBUTE cheese { none, some, lots }<br>
+@ATTRIBUTE meat { vegetarian, meaty }<br>
+@ATTRIBUTE sauce { sweet, salty }<br>
+@ATTRIBUTE flour { low_gluten, high_gluten }<br>
+@ATTRIBUTE class { awful, edible, stellar }<br>
+<br>
+@DATA<br>
+%none, vegetarian, sweet, low_gluten, awful<br>
+%some, vegetarian, sweet, low_gluten, awful<br>
+lots, vegetarian, sweet, low_gluten, awful<br>
+lots, vegetarian, sweet, low_gluten, edible<br>
+none, meaty, sweet, low_gluten, awful<br>
+some, meaty, sweet, low_gluten, edible<br>
+lots, meaty, sweet, low_gluten, awful<br>
+none, vegetarian, salty, low_gluten, awful<br>
+some, vegetarian, salty, low_gluten, awful<br>
+lots, vegetarian, salty, low_gluten, edible<br>
+none, meaty, salty, low_gluten, awful<br>
+some, meaty, salty, low_gluten, awful<br>
+lots, meaty, salty, low_gluten, awful<br>
+none, vegetarian, sweet, high_gluten, awful<br>
+some, vegetarian, sweet, high_gluten, awful<br>
+lots, vegetarian, sweet, high_gluten, edible<br>
+none, meaty, sweet, high_gluten, awful<br>
+some, meaty, sweet, high_gluten, edible<br>
+lots, meaty, sweet, high_gluten, stellar<br>
+none, vegetarian, salty, high_gluten, awful<br>
+some, vegetarian, salty, high_gluten, edible<br>
+lots, vegetarian, salty, high_gluten, stellar<br>
+none, meaty, salty, high_gluten, edible<br>
+some, meaty, salty, high_gluten, stellar<br>
+lots, meaty, salty, high_gluten, stellar<br>
+</div>
+<br>
+Perhaps the easiest way to debug a decision tree is to spew lots of
+info to a log file and then compare results. It helps with readability
+if you tabulate your log
+spew according to the depth of the tree. Here's the log spew that I get
+from this data. If you make your log spew follow the same format, then
+you can simply diff your results with these to find errors. (To format
+doubles, I used printf("%.14lg", value);).<br>
+<br>
+<div style="margin-left: 40px; font-family: monospace;">Applicable
+rules: <br>
+Applicable patterns: 23<br>
+{lots, vegetarian, sweet, low_gluten, awful}<br>
+{lots, vegetarian, sweet, low_gluten, edible}<br>
+{none, meaty, sweet, low_gluten, awful}<br>
+{some, meaty, sweet, low_gluten, edible}<br>
+{lots, meaty, sweet, low_gluten, awful}<br>
+{none, vegetarian, salty, low_gluten, awful}<br>
+{some, vegetarian, salty, low_gluten, awful}<br>
+{lots, vegetarian, salty, low_gluten, edible}<br>
+{none, meaty, salty, low_gluten, awful}<br>
+{some, meaty, salty, low_gluten, awful}<br>
+{lots, meaty, salty, low_gluten, awful}<br>
+{none, vegetarian, sweet, high_gluten, awful}<br>
+{some, vegetarian, sweet, high_gluten, awful}<br>
+{lots, vegetarian, sweet, high_gluten, edible}<br>
+{none, meaty, sweet, high_gluten, awful}<br>
+{some, meaty, sweet, high_gluten, edible}<br>
+{lots, meaty, sweet, high_gluten, stellar}<br>
+{none, vegetarian, salty, high_gluten, awful}<br>
+{some, vegetarian, salty, high_gluten, edible}<br>
+{lots, vegetarian, salty, high_gluten, stellar}<br>
+{none, meaty, salty, high_gluten, edible}<br>
+{some, meaty, salty, high_gluten, stellar}<br>
+{lots, meaty, salty, high_gluten, stellar}<br>
+Are there still attributes on which we can split? Yes.<br>
+Is the output homogenous? No.<br>
+If we were to split on cheese, the info-gain would be 1.4509082837502 -
+7 / 23 * 0.59167277858233 - 7 / 23 * 1.4488156357252 - 9 / 23 *
+1.5849625007212 = 0.20968735302657<br>
+If we were to split on meat, the info-gain would be 1.4509082837502 -
+11 / 23 * 1.3221793455167 - 12 / 23 * 1.5 = 0.035952944590037<br>
+If we were to split on sauce, the info-gain would be 1.4509082837502 -
+11 / 23 * 1.3221793455167 - 12 / 23 * 1.5 = 0.035952944590037<br>
+If we were to split on flour, the info-gain would be 1.4509082837502 -
+11 / 23 * 0.84535093662244 - 12 / 23 * 1.5849625007212 =
+0.21967305281537<br>
+So we will split on flour<br>
+<br>
+&nbsp;&nbsp;&nbsp; Applicable rules: flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; Applicable patterns: 11<br>
+&nbsp;&nbsp;&nbsp; {some, vegetarian, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {none, vegetarian, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {some, meaty, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {lots, meaty, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {some, meaty, sweet, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {lots, meaty, sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {none, meaty, sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, salty, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {none, meaty, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split?
+Yes.<br>
+&nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; If we were to split on cheese, the info-gain would
+be 0.84535093662244 - 3 / 11 * 0 - 3 / 11 * 0.91829583405449 - 5 / 11 *
+0.97095059445467 = 0.15356543894636<br>
+&nbsp;&nbsp;&nbsp; If we were to split on meat, the info-gain would be
+0.84535093662244 - 5 / 11 * 0.97095059445467 - 6 / 11 *
+0.65002242164835 = 0.049452072789394<br>
+&nbsp;&nbsp;&nbsp; If we were to split on sauce, the info-gain would be
+0.84535093662244 - 5 / 11 * 0.97095059445467 - 6 / 11 *
+0.65002242164835 = 0.049452072789394<br>
+&nbsp;&nbsp;&nbsp; So we will split on cheese<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=none,
+flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 3<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, vegetarian, salty,
+low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty, salty, low_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty, sweet, low_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=some,
+flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 3<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, vegetarian, salty,
+low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty, salty, low_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty, sweet, low_gluten,
+edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on meat, the
+info-gain would be 0.91829583405449 - 1 / 3 * 0 - 2 / 3 * 1 =
+0.25162916738782<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on sauce, the
+info-gain would be 0.91829583405449 - 1 / 3 * 0 - 2 / 3 * 0 =
+0.91829583405449<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=some, sauce=sweet, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty,
+sweet, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=some, sauce=salty, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty,
+salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some,
+vegetarian, salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots,
+flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 5<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty, sweet, low_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet,
+low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, vegetarian, salty,
+low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty, salty, low_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet,
+low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on meat, the
+info-gain would be 0.97095059445467 - 3 / 5 * 0.91829583405449 - 2 / 5
+* 0 = 0.41997309402197<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on sauce, the
+info-gain would be 0.97095059445467 - 3 / 5 * 0.91829583405449 - 2 / 5
+* 1 = 0.019973094021975<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on meat<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=lots, meat=vegetarian, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 3<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots,
+vegetarian, salty, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots,
+vegetarian, sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots,
+vegetarian, sweet, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on sauce, the info-gain would be 0.91829583405449 - 2 / 3 * 1 - 1
+/ 3 * 0 = 0.25162916738782<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots, meat=vegetarian,
+sauce=sweet, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots, meat=vegetarian,
+sauce=salty, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, salty, low_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=lots, meat=meaty, flour=low_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty,
+sweet, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty,
+salty, low_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; Applicable rules: flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; Applicable patterns: 12<br>
+&nbsp;&nbsp;&nbsp; {some, meaty, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; {some, vegetarian, salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {some, meaty, sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {none, meaty, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {lots, meaty, sweet, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; {none, vegetarian, salty, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {none, meaty, salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {none, vegetarian, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {some, vegetarian, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; {lots, meaty, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split?
+Yes.<br>
+&nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; If we were to split on cheese, the info-gain would
+be 1.5849625007212 - 4 / 12 * 0.81127812445913 - 4 / 12 * 1.5 - 4 / 12
+* 0.81127812445913 = 0.5441104177484<br>
+&nbsp;&nbsp;&nbsp; If we were to split on meat, the info-gain would be
+1.5849625007212 - 6 / 12 * 1.4591479170272 - 6 / 12 * 1.4591479170272 =
+0.12581458369391<br>
+&nbsp;&nbsp;&nbsp; If we were to split on sauce, the info-gain would be
+1.5849625007212 - 6 / 12 * 1.4591479170272 - 6 / 12 * 1.4591479170272 =
+0.12581458369391<br>
+&nbsp;&nbsp;&nbsp; So we will split on cheese<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=none,
+flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 4<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty, salty, high_gluten,
+edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, vegetarian, salty,
+high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty, sweet, high_gluten,
+awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, vegetarian, sweet,
+high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on meat, the
+info-gain would be 0.81127812445913 - 2 / 4 * 0 - 2 / 4 * 1 =
+0.31127812445913<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on sauce, the
+info-gain would be 0.81127812445913 - 2 / 4 * 0 - 2 / 4 * 1 =
+0.31127812445913<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on meat<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=none, meat=vegetarian, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none,
+vegetarian, salty, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none,
+vegetarian, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=none, meat=meaty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty,
+salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {none, meaty,
+sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on sauce, the info-gain would be 1 - 1 / 2 * 0 - 1 / 2 * 0 = 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=none, meat=meaty,
+sauce=sweet, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {none, meaty, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=none, meat=meaty,
+sauce=salty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {none, meaty, salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=some,
+flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 4<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, vegetarian, salty,
+high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty, salty, high_gluten,
+stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, vegetarian, sweet,
+high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty, sweet, high_gluten,
+edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on meat, the
+info-gain would be 1.5 - 2 / 4 * 1 - 2 / 4 * 1 = 0.5<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on sauce, the
+info-gain would be 1.5 - 2 / 4 * 1 - 2 / 4 * 1 = 0.5<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on meat<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=some, meat=vegetarian, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some,
+vegetarian, salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some,
+vegetarian, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on sauce, the info-gain would be 1 - 1 / 2 * 0 - 1 / 2 * 0 = 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=some, meat=vegetarian,
+sauce=sweet, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {some, vegetarian, sweet, high_gluten, awful}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=some, meat=vegetarian,
+sauce=salty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {some, vegetarian, salty, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=some, meat=meaty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty,
+salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {some, meaty,
+sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on sauce, the info-gain would be 1 - 1 / 2 * 0 - 1 / 2 * 0 = 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=some, meat=meaty,
+sauce=sweet, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {some, meaty, sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=some, meat=meaty,
+sauce=salty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {some, meaty, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots,
+flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 4<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty, salty, high_gluten,
+stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, vegetarian, salty,
+high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty, sweet, high_gluten,
+stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet,
+high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on meat, the
+info-gain would be 0.81127812445913 - 2 / 4 * 1 - 2 / 4 * 0 =
+0.31127812445913<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on sauce, the
+info-gain would be 0.81127812445913 - 2 / 4 * 1 - 2 / 4 * 0 =
+0.31127812445913<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on meat<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=lots, meat=vegetarian, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots,
+vegetarian, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots,
+vegetarian, sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on sauce, the info-gain would be 1 - 1 / 2 * 0 - 1 / 2 * 0 = 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on sauce<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots, meat=vegetarian,
+sauce=sweet, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, sweet, high_gluten, edible}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: cheese=lots, meat=vegetarian,
+sauce=salty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {lots, vegetarian, salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: cheese=lots, meat=meaty, flour=high_gluten, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty,
+salty, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {lots, meaty,
+sweet, high_gluten, stellar}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+</div>
+<br>
+Here's another dataset to try:<br>
+<br>
+<div style="margin-left: 40px; font-family: monospace;">% 1. Title:
+Database for fitting contact lenses<br>
+% <br>
+% 2. Sources:<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (a) Cendrowska, J. "PRISM: An algorithm
+for inducing modular rules",<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; International
+Journal of Man-Machine Studies, 1987, 27, 349-370<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (b) Donor: Benoit Julien
+(Julien@ce.cmu.edu)<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (c) Date: 1 August 1990<br>
+% <br>
+% 3. Past Usage:<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. See above.<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. Witten, I. H. &amp; MacDonald,
+B. A. (1988). Using concept<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; learning for
+knowledge acquisition. International Journal of<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Man-Machine
+Studies, 27, (pp. 349-370).<br>
+% <br>
+%&nbsp; Notes:&nbsp; This database is complete (all possible
+combinations of<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; attribute-value
+pairs are represented).<br>
+% <br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Each instance
+is complete and correct.<br>
+% <br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 9 rules cover
+the training set.<br>
+% <br>
+% 4. Relevant Information Paragraph:<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; The examples are complete and noise free.<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; The examples highly simplified the problem.
+The attributes do not<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; fully describe all the factors affecting the
+decision as to which type,<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; if any, to fit.<br>
+% <br>
+% 5. Number of Instances: 24<br>
+% <br>
+% 6. Number of Attributes: 4 (all nominal)<br>
+% <br>
+% 7. Attribute Information:<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; -- 3 Classes<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1 : the patient should be fitted with
+hard contact lenses,<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2 : the patient should be fitted with
+soft contact lenses,<br>
+%&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1 : the patient should not be fitted
+with contact lenses.<br>
+% <br>
+%&nbsp;&nbsp;&nbsp;&nbsp; 1. age of the patient: (1) young, (2)
+pre-presbyopic, (3) presbyopic<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; 2. spectacle prescription:&nbsp; (1) myope,
+(2) hypermetrope<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; 3. astigmatic:&nbsp;&nbsp;&nbsp;&nbsp; (1)
+no, (2) yes<br>
+%&nbsp;&nbsp;&nbsp;&nbsp; 4. tear production rate:&nbsp; (1) reduced,
+(2) normal<br>
+% <br>
+% 8. Number of Missing Attribute Values:&nbsp;&nbsp; 0<br>
+% <br>
+% 9. Class Distribution:<br>
+%&nbsp;&nbsp;&nbsp; 1. hard contact lenses: 4<br>
+%&nbsp;&nbsp;&nbsp; 2. soft contact lenses: 5<br>
+%&nbsp;&nbsp;&nbsp; 3. no contact lenses: 15<br>
+<br>
+@relation contact-lenses<br>
+<br>
+@attribute age &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+{young, pre-presbyopic, presbyopic}<br>
+@attribute spectacle-prescrip&nbsp;&nbsp;&nbsp; {myope, hypermetrope}<br>
+@attribute astigmatism&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {no, yes}<br>
+@attribute tear-prod-rate&nbsp;&nbsp;&nbsp; {reduced, normal}<br>
+@attribute contact-lenses&nbsp;&nbsp;&nbsp; {soft, hard, none}<br>
+<br>
+@data<br>
+%<br>
+% 24 instances<br>
+%<br>
+young,myope,no,reduced,none<br>
+young,myope,no,normal,soft<br>
+young,myope,yes,reduced,none<br>
+young,myope,yes,normal,hard<br>
+young,hypermetrope,no,reduced,none<br>
+young,hypermetrope,no,normal,soft<br>
+young,hypermetrope,yes,reduced,none<br>
+young,hypermetrope,yes,normal,hard<br>
+pre-presbyopic,myope,no,reduced,none<br>
+pre-presbyopic,myope,no,normal,soft<br>
+pre-presbyopic,myope,yes,reduced,none<br>
+pre-presbyopic,myope,yes,normal,hard<br>
+pre-presbyopic,hypermetrope,no,reduced,none<br>
+pre-presbyopic,hypermetrope,no,normal,soft<br>
+pre-presbyopic,hypermetrope,yes,reduced,none<br>
+pre-presbyopic,hypermetrope,yes,normal,none<br>
+presbyopic,myope,no,reduced,none<br>
+presbyopic,myope,no,normal,none<br>
+presbyopic,myope,yes,reduced,none<br>
+presbyopic,myope,yes,normal,hard<br>
+presbyopic,hypermetrope,no,reduced,none<br>
+presbyopic,hypermetrope,no,normal,soft<br>
+presbyopic,hypermetrope,yes,reduced,none<br>
+presbyopic,hypermetrope,yes,normal,none<br>
+</div>
+<br>
+And here are the results:<br>
+<br>
+<div style="margin-left: 40px; font-family: monospace;">Applicable
+rules: <br>
+Applicable patterns: 24<br>
+{young, myope, no, reduced, none}<br>
+{young, myope, no, normal, soft}<br>
+{young, myope, yes, reduced, none}<br>
+{young, myope, yes, normal, hard}<br>
+{young, hypermetrope, no, reduced, none}<br>
+{young, hypermetrope, no, normal, soft}<br>
+{young, hypermetrope, yes, reduced, none}<br>
+{young, hypermetrope, yes, normal, hard}<br>
+{pre-presbyopic, myope, no, reduced, none}<br>
+{pre-presbyopic, myope, no, normal, soft}<br>
+{pre-presbyopic, myope, yes, reduced, none}<br>
+{pre-presbyopic, myope, yes, normal, hard}<br>
+{pre-presbyopic, hypermetrope, no, reduced, none}<br>
+{pre-presbyopic, hypermetrope, no, normal, soft}<br>
+{pre-presbyopic, hypermetrope, yes, reduced, none}<br>
+{pre-presbyopic, hypermetrope, yes, normal, none}<br>
+{presbyopic, myope, no, reduced, none}<br>
+{presbyopic, myope, no, normal, none}<br>
+{presbyopic, myope, yes, reduced, none}<br>
+{presbyopic, myope, yes, normal, hard}<br>
+{presbyopic, hypermetrope, no, reduced, none}<br>
+{presbyopic, hypermetrope, no, normal, soft}<br>
+{presbyopic, hypermetrope, yes, reduced, none}<br>
+{presbyopic, hypermetrope, yes, normal, none}<br>
+Are there still attributes on which we can split? Yes.<br>
+Is the output homogenous? No.<br>
+If we were to split on age, the info-gain would be 1.3260875253643 - 8
+/ 24 * 1.5 - 8 / 24 * 1.2987949406954 - 8 / 24 * 1.0612781244591 =
+0.039396503646121<br>
+If we were to split on spectacle-prescrip, the info-gain would be
+1.3260875253643 - 12 / 24 * 1.3844315043406 - 12 / 24 * 1.1887218755409
+= 0.039510835423566<br>
+If we were to split on astigmatism, the info-gain would be
+1.3260875253643 - 12 / 24 * 0.97986875665115 - 12 / 24 *
+0.91829583405449 = 0.37700523001148<br>
+If we were to split on tear-prod-rate, the info-gain would be
+1.3260875253643 - 12 / 24 * 0 - 12 / 24 * 1.5545851693378 =
+0.5487949406954<br>
+So we will split on tear-prod-rate<br>
+<br>
+&nbsp;&nbsp;&nbsp; Applicable rules: tear-prod-rate=reduced, <br>
+&nbsp;&nbsp;&nbsp; Applicable patterns: 12<br>
+&nbsp;&nbsp;&nbsp; {young, myope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, myope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {young, hypermetrope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, myope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {young, myope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, no, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; {young, hypermetrope, yes, reduced, none}<br>
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split?
+Yes.<br>
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; Applicable rules: tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; Applicable patterns: 12<br>
+&nbsp;&nbsp;&nbsp; {young, hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; {young, myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, myope, no, normal, none}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; {young, myope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; {presbyopic, myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; {young, hypermetrope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split?
+Yes.<br>
+&nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; If we were to split on age, the info-gain would be
+1.5545851693378 - 4 / 12 * 1 - 4 / 12 * 1.5 - 4 / 12 * 1.5 =
+0.22125183600447<br>
+&nbsp;&nbsp;&nbsp; If we were to split on spectacle-prescrip, the
+info-gain would be 1.5545851693378 - 6 / 12 * 1.4591479170272 - 6 / 12
+* 1.4591479170272 = 0.095437252310555<br>
+&nbsp;&nbsp;&nbsp; If we were to split on astigmatism, the info-gain
+would be 1.5545851693378 - 6 / 12 * 0.65002242164835 - 6 / 12 *
+0.91829583405449 = 0.77042604148638<br>
+&nbsp;&nbsp;&nbsp; So we will split on astigmatism<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules: astigmatism=no,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 6<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope,
+no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, hypermetrope, no, normal,
+soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, myope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, no,
+normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic, myope, no, normal,
+none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, no,
+normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on age, the
+info-gain would be 0.65002242164835 - 2 / 6 * 0 - 2 / 6 * 0 - 2 / 6 * 1
+= 0.31668908831502<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on
+spectacle-prescrip, the info-gain would be 0.65002242164835 - 3 / 6 *
+0.91829583405449 - 3 / 6 * 0 = 0.19087450462111<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on age<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: age=young, astigmatism=no, tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young,
+hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, myope,
+no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: age=pre-presbyopic, astigmatism=no, tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+{pre-presbyopic, hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+{pre-presbyopic, myope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: age=presbyopic, astigmatism=no, tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 2<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic,
+hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic,
+myope, no, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on spectacle-prescrip, the info-gain would be 1 - 1 / 2 * 0 - 1 /
+2 * 0 = 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on spectacle-prescrip<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: age=presbyopic,
+spectacle-prescrip=myope, astigmatism=no, tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {presbyopic, myope, no, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: age=presbyopic,
+spectacle-prescrip=hypermetrope, astigmatism=no, tear-prod-rate=normal,
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, no, normal, soft}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable rules:
+astigmatism=yes, tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable patterns: 6<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope,
+yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {pre-presbyopic, myope, yes,
+normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, hypermetrope, yes,
+normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, yes,
+normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic, myope, yes, normal,
+hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there still attributes on
+which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on age, the
+info-gain would be 0.91829583405449 - 2 / 6 * 0 - 2 / 6 * 1 - 2 / 6 * 1
+= 0.25162916738782<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to split on
+spectacle-prescrip, the info-gain would be 0.91829583405449 - 3 / 6 * 0
+- 3 / 6 * 0.91829583405449 = 0.45914791702724<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will split on
+spectacle-prescrip<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: spectacle-prescrip=myope, astigmatism=yes,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 3<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+{pre-presbyopic, myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young, myope,
+yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic,
+myope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we make a
+leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+rules: spectacle-prescrip=hypermetrope, astigmatism=yes,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Applicable
+patterns: 3<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {young,
+hypermetrope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+{pre-presbyopic, hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {presbyopic,
+hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Are there
+still attributes on which we can split? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Is the output
+homogenous? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; If we were to
+split on age, the info-gain would be 0.91829583405449 - 1 / 3 * 0 - 1 /
+3 * 0 - 1 / 3 * 0 = 0.91829583405449<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; So we will
+split on age<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: age=young,
+spectacle-prescrip=hypermetrope, astigmatism=yes,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {young, hypermetrope, yes, normal, hard}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: age=pre-presbyopic,
+spectacle-prescrip=hypermetrope, astigmatism=yes,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {pre-presbyopic, hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable rules: age=presbyopic,
+spectacle-prescrip=hypermetrope, astigmatism=yes,
+tear-prod-rate=normal, <br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Applicable patterns: 1<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; {presbyopic, hypermetrope, yes, normal, none}<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Are there still attributes on which we can split? No.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; Is the output homogenous? Yes.<br>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; So we make a leaf node<br>
+</div>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+</body>
+</html>

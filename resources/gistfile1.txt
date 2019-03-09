@@ -1,0 +1,49 @@
+ID3 Pseudocode
+
+id3(examples, attributes) 
+   ''' 
+   examples are the training examples.  attributes is a list of
+   attributes that may be tested by the learned decison tree.  Returns
+   a tree that correctly classifies the given examples. Assume that
+   the targetAttribute, which is the attribute whose value is to be
+   predicted by the tree, is a class variable.
+   '''
+   node = DecisionTreeNode(examples)
+   # handle target attributes with arbitrary labels
+   dictionary = summarizeExamples(examples, targetAttribute)
+   for key in dictionary:
+       if dictionary[key] == total number of examples
+          node.label = key
+          return node
+   # test for number of examples to avoid overfitting
+   if attributes is empty or number of examples < minimum allowed per branch:
+      node.label = most common value in examples
+      return node
+   bestA = the attribute with the most information gain
+   node.decision = bestA
+   for each possible value v of bestA:
+      subset = the subset of examples that have value v for bestA
+      if subset is not empty:
+         node.addBranch(id3(subset, targetAttribute, attributes-bestA))
+   return node
+Information Gain Pseudocode
+
+infoGain(examples, attribute, entropyOfSet)
+   gain = entropyOfSet
+   for value in attributeValues(examples, attribute):
+       sub = subset(examples, attribute, value)
+       gain -=  (number in sub)/(total number of examples) * entropy(sub)
+   return gain
+Entropy Pseudocode
+
+entropy(examples)
+   '''
+   log2(x) = log(x)/log(2)
+   '''
+   result = 0
+   # handle target attributes with arbitrary labels
+   dictionary = summarizeExamples(examples, targetAttribute)
+   for key in dictionary:
+       proportion = dictionary[key]/total number of examples
+       result -= proportion * log2(proportion)
+   return result

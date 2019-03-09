@@ -1,6 +1,12 @@
 /**
  * BOSS.js by Eric White
  * e@ericiscool.net
+ * 
+ * TODO: 
+ *      Add task received to ensure not waiting on nothing
+ *      Split worker and master portions into separate files for library
+ *      Add alternative to chalk dependency
+ *      Implement more async/awaits and error catching
  */
 let cluster   = require('cluster'),
     chalk     = require('chalk'),
@@ -190,6 +196,22 @@ _.hire = function hireSafely(task){
     else if (task.constructor == Array) return _.hireAll(task)
     else return _.hireOne(task)
 }
+_.fire = function fireXAmountOfWorkers(count = Infinity){
+    // Add protection for firing too many?
+    let firedWorkers = 0,
+        potentialWorkers = _.workers.length,
+        i = 0,
+        il = count < potentialWorkers?count:potentialWorkers;
+    _.out(`Firing up to ${il} workers :(`); 
+    while (firedWorkers < count && i < potentialWorkers){
+        let w = _.workers[i];
+        if (w.alive) {
+            w.send("you're fired");
+            w.alive = false;
+            firedWorkers++;
+        }
+    }
+}
 /**
  * Hires as many workers as possible to complete tasks in the main argument
  * @param {Array} tasks an array of tasks to be complete by the workers
@@ -279,17 +301,16 @@ function report(msg) {
 }
 // Worker handler for receiving messages; What should the worker do?
 function workerRecv(task){
-    // _.out(`I got message: ${task}`)
-    // console.log(`gottAK: ${JSON.stringify(task)}`)
-    // debugger;
-    // if (task == "you're hired"){
-    //     _.employed = true;
-    // }
-    _.workFunction(task)
-    .then(res => {
-        report({ success: true, result: res, task: task})
-    })
-    .catch(err => report({ success: false, result: err, task: task}))
+    if (task == "you're fired"){
+        _.info(`It's been a pleasure working with you boss <3`);
+        process.exit(1);
+    } else {
+        _.workFunction(task)
+        .then(res => {
+            report({ success: true, result: res, task: task})
+        })
+        .catch(err => report({ success: false, result: err, task: task}))
+    }
 }
 _.wait = (cb, timeout = 0, interval = 500) => new Promise((resolve, reject) => {
     let start = Date.now(), endLimit = timeout > 0 ? start + timeout : Infinity,
