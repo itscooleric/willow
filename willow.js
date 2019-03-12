@@ -16,9 +16,10 @@ const util        = require('./util.js'),
         this.data       = options.data;
         this.target     = options.target;
         this.features   = Object.keys(this.data[0]).filter(a => a != options.target);
-        this.entropy    = calc.entropy(this.data, options.target);
+        this.entropy    = crit.entropy(this.data, options.target);
         this.nodes      = {};
         this.nodeCount  = 0;
+        this.criterion  = 'gini',
         this.pure       = false;
         this.trained    = false;
         this.queue      = [];
@@ -33,15 +34,20 @@ const util        = require('./util.js'),
         this.children  = {};                        // where the children of the node are
         this.parent    = options.parent  || false;
         this.depth     = options.depth   || 0;
-        this.entropy   = calc.entropy(this.data, this.tree.target);//options.entropy;           // starting entropy for this node
+        this.entropy   = crit.entropy(this.data, this.tree.target);//options.entropy;           // starting entropy for this node
         this.feature   = options.feature ||'root';  // feature this node was branched on
         this.value     = options.value   ||'root';  // value of the feature of this node
-        this.isLeaf    = options.isLeaf  || false;  // if it's a leaf, we won't split
         this.isRoot    = options.isRoot  || false;  // will determine if we need to add it to the nodes 
+        this.isLeaf    = options.isLeaf  || false;  // if it's a leaf, we won't split
         this.features  = this.tree.features;
         this.climbed   = options.isRoot || options.isLeaf;
         this.prototype = {};
-        this.id        = `${this.feature}_${this.value}`;
+        this.criterion = options.criterion || this.tree.criterion,
+        this.target    = options.target || this.tree.target,
+        this.split     = this._selectFeature({data: this.data, fy: this.target}),
+        this.id        = options.id||`${this.feature}_${this.value}`;
+        // this.isLeaf     = this.isLeaf? this.isLeaf:this.split.score == 0;
+        // debugger;
         if (!options.isRoot){
             // Generate the node id
             let id   = this.id,
@@ -54,7 +60,7 @@ const util        = require('./util.js'),
 tree.prototype = { 
     // Determine what the variable should be used to split...
     fit: function trainModel(X_train, y_train){
-        this.entropy = calc.entropy(this.data, this.target);
+        this.entropy = crit.entropy(this.data, this.target);
         this.nodes.root = new node({
             data   : this.data,
             entropy: this.entropy,
@@ -79,6 +85,8 @@ tree.prototype = {
             console.log(this.output);
             await util.write(this.output, 'willow-result.txt');
             console.log(`Printing complete!`);
+            console.log(this.nodes.root.children);
+            debugger;
             // console.log(this.nodes);
             // debugger;
         }
@@ -111,15 +119,17 @@ node.prototype = {
             f      = this.feature,
             v      = this.value,
             e      = this.entropy,
-            op     = '==',                                 
+            [feature, op, value] = this.id.split('~'),
+            // op     = '==',                                 
             // operator - more useful later when using continuous variables
             output = [],
             tabs   = new Array(d).join('\t'),
             push   = str => this.tree.output += `\n${tabs}${str}`;
+        // debugger;
             // push   = str => output.push(`${tabs}${str}`);
         if (!this.isLeaf){
             let nKids = this.children;
-            if (!this.isRoot) push(`${f} ${op} ${v}:`);
+            if (!this.isRoot) push(`${feature} ${op} ${value}:`);
             else push(`TREE ROOT\n-------`)
             Object.keys(nKids)
                 .sort(a => nKids[a].isLeaf?-1:1)
@@ -128,7 +138,7 @@ node.prototype = {
             let nProbs = this.children;
             // Object.keys(nProbs).map(prob => push(`${(+nProbs[prob]*100).toFixed(2)}% ${prob}`))
 
-            Object.keys(nProbs).map(prob => push(`${f} ${op} ${v}: ${nProbs[prob]} ~ ${prob}`))
+            Object.keys(nProbs).map(prob => push(`${feature} ${op} ${value}: ${nProbs[prob]} ~ ${prob}`))
         }
     },
     /**
@@ -155,61 +165,66 @@ node.prototype = {
             }
             tProbs[v]++;
         };
-        console.log(`Leaf ${nFeature}_${nValue} at ${nEntropy}:`)
+        console.log(`Leaf ${nFeature}~${nValue} at ${nEntropy}:`)
         nValues.map(v => {
             nProbs[v] = tProbs[v]/nLength;
             console.log(`\t${v} ~ ${nProbs[v].percent(2)}`);
         });
         this.tree.admire();
     },
-    _selectFeature: function selectFeatureToSplitOn(nData =  this.data, nFeatures = this.features, nEntropy = this.entropy, target = this.tree.target) {
-        let maxgain = {gain: 0},
-            gains   = {};
-        if (nData.length > 0){
-            console.log(`Selecting feature from ${nFeatures.join(', ')}`)
-            nFeatures.map((f, i) => {
-                console.log(f);
-                let curgain = calc.gain(nData, f, target, nEntropy);
-                gains[f] = {
-                    feature: f,
-                    gain   : curgain,
-                    i      : i
-                };
-                maxgain = curgain > maxgain.gain?gains[f]:maxgain;
-            })
-        } else console.log(`No data for ${this.id}, must be a leaf`);
-        return maxgain;
+    _selectFeature: function (options = {}) {
+        let criterion = this.criterion,
+            data      = options.data || this.data,
+            best      = crit[criterion]({
+                data: data,
+                fy  : this.target,
+            }),
+            leaf = best.score == 0;
+        return Object.assign(best, {leaf});
     },
+    // _stoppingCriteria = function () {
+
+    // },
     branch: function createBranchingNode (options = {}) {
         let nData     = this.data,
             nValue    = this.value,
             nFeature  = this.feature,
             nDepth    = this.depth,
-            t         = this.tree.target,
-            bestSplit = this._selectFeature();
-        let bFeature  = bestSplit.feature,      // the feature the new node will branch on
-            bScore    = bestSplit.gain,         // information gain from the current node
-            bData     = {},                     // the data that will be passed on to the different nodes
-            bValues   = [];
-        while (nData.length > 0){
-            let r = nData.pop(),            // current record in the dataset
-                v = r[bFeature];            // value of the bFeature in the current record
-            if (!bData[v]) bData[v] = [];   // checks to see if value is represented in bData
-            bData[v].push(r);               // Add record to the node data set
-            bValues.push(v);
+            split     = this.split,
+            bFeature  = split.feature,         // the feature the new node will branch on
+            bData     = {},                    // the data that will be passed on to the different nodes
+            bLeaf     = split.leaf,
+            bValues   = [],
+            groupData   = crit.group({data: nData, feature: bFeature});
+        // Faster method... but harder to keep track of
+        let manual = () => {
+            let tData = nData.slice(0);
+            while (tData.length > 0){
+                let r = tData.pop(),            // current record in the dataset
+                    v = r[bFeature];            // value of the bFeature in the current record
+                if (!bData[v]) {
+                    bData[v] = [];              // checks to see if value is represented in bData
+                    bValues.push(v);
+                }
+                bData[v].push(r);               // Add record to the node data set
+            };
         };
-        bValues.map(bv => {
-            console.log(`Should be spawning ${bv}`);
-            let bEntropy = calc.entropy(bData[bv], t),
-                bLeaf    = bEntropy == 0;
-            console.log(`${bLeaf?'Leaf':'Branch'}ing from ${nFeature}_${nValue} branch @ ${bFeature} gains ${bScore} to ${bEntropy}`);
-            this.children[`${bFeature}_${bv}`] = new node({
-                data   : bData[bv],
+        // debugger;
+        groupData.values.map(bv => {
+            // console.log(`Should be spawning ${bv}`);
+            // let bEntropy = crit.entropy(bData[bv], t),
+            //     bLeaf    = bEntropy == 0;
+            let bvSplit = bv.split('|'),
+                bvOp    = bvSplit[0],
+                bvVal   = bvSplit[1],
+                bvKey   = `${bFeature}~${bvOp}~${bvVal}`;
+            console.log(`New ${bLeaf?'Leaf':'Branch'} from ${nFeature}~${nValue} to ${bvKey}`);
+            this.children[bvKey] = new node({
+                data   : groupData.data[bv],
                 feature: bFeature,
                 value  : bv,
+                id     : bvKey,
                 // value is the key of node data
-                score   : bScore,
-                entropy: bEntropy,
                 tree   : this.tree,
                 parent : this.branch,
                 depth  : nDepth+1,
@@ -246,26 +261,31 @@ const init = async () => {
             target: 'play'
         },
         vote: {
-            data  : await util.read('./examples/vote/train.csv'),
+            data  : (await util.read('./examples/vote/train.csv')).parseInt(),
             target: 'class'
         },
         vowel: {
-            data  : await util.read('./examples/cars_etc/vowel.csv'),
+            data  : (await util.read('./examples/cars_etc/vowel.csv')).parseInt(),
             target: 'class'
         },
         lenses: {
-            data  : await util.read('./examples/cars_etc/lenses.csv'),
+            data  : (await util.read('./examples/cars_etc/lenses.csv')).parseInt(),
             target: 'lense'
         },
+        iris: {
+            data  : (await util.read('./examples/cars_etc/iris.csv')).parseInt(),
+            target: 'class'
+        },
     }
-    let sampleKeys = ['outlook', 'humidity', 'temperature', 'wind'];
-    console.log(`Multiple`)
-    console.log(profiler(() => sampleKeys.map(a => calc.gini(sample.weather.data,a, 'play')), 1000000));
-    console.log(`\nOptimized`);
-    console.log(profiler(() => calc.giniOptimized(sample.weather.data, 'play'), 1000000));
-    // calc.giniOptimized(sample.weather.data, 'play');
     debugger;
-    new tree(sample.weather).fit()
+    // let sampleKeys = ['outlook', 'humidity', 'temperature', 'wind'];
+    // console.log(`Multiple`)
+    // console.log(profiler(() => sampleKeys.map(a => crit.gini(sample.weather.data,a, 'play')), 1000000));
+    // console.log(`\nOptimized`);
+    // console.log(profiler(() => crit.giniOptimized(sample.weather.data, 'play'), 1000000));
+    // // crit.giniOptimized(sample.weather.data, 'play');
+    // debugger;
+    // new tree(sample.weather).fit()
 }
 init();
 

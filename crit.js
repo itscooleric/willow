@@ -4,8 +4,7 @@
  * 
  * 
  */
-const util = require('./util.js'),
-        calc = {
+const  calc = {
         /**
          * Caculates entropy
          * @param arr array of objects to look at
@@ -47,7 +46,9 @@ const util = require('./util.js'),
                     y = ey(arr[i]);
                 if (!op[x]) {
                     op[x] = [];
-                    cent[x] = { n: 0 };
+                    cent[x] = { 
+                        n: 0 
+                    };
                 }
                 op[x].push(y);
                 cent[x].n++;
@@ -66,7 +67,10 @@ const util = require('./util.js'),
          * @param {*} fx 
          * @param {*} fy 
          */
-        gini: function getGINIImpurityX(data, fx, fy) {
+        gini: function getGINIImpurityX(options = {}) {
+            let data = options.data,
+                fx = data.fx,
+                fy = options.fy;
             // Gini index is an impurity-based criterion that measures the divergences between the probability distributions of the target attribute’s values. 
             // The Gini index has been used in various works such as (Breiman et al., 1984) and (Gelfand et al., 1991) 
             // Example: https://sefiks.com/2018/08/27/a-step-by-step-cart-decision-tree-example/
@@ -106,28 +110,80 @@ const util = require('./util.js'),
             return fValues;
         },
         /**
+         * Calculates gini impurity of feature x (fx) in relation to target y (fy) in dataset 
+         * @description Gini index is an impurity-based criterion that measures the divergences between the probability distributions of the target attribute’s values. The Gini index has been used in various works such as (Breiman et al., 1984) and (Gelfand et al., 1991) 
+         * @param {*} data 
+         * @param {*} fx 
+         * @param {*} fy 
+         */
+        giniFn: function getGINIImpurityX(options = {}) {
+            let data = options.data,
+                fx = data.fx,
+                fy = options.fy,
+                fn = options.fn || false;
+           let fValues = { gini: 0 },    // object of all sums based on feature values and within are the target values of those feature values
+                fArr = [],              // array of all values to save time by just looping through
+                dataLength = data.length;  // length of the input data
+            //? is pushing to the array x*value times faster than running an Object.keys on the fValues object?
+            // this section gets the counts for each target value by the feature value
+            //! may be further optimized by allowing it to loop though once and get all of the gini indexes at once
+            for (let i = 0, il = data.length; i < il; i++) {
+                let a = data[i],   // current record
+                    vx = a[fx],     // value of x
+                    vy = a[fy],     // value of target
+                    fnx = fn?fn(vx):vx;
+                if (!fValues[fnx]) { // if the value isn't in the proba obj
+                    fValues[fnx] = { sum: 0, gini: 1, keys: [] }; // create an object for the f value
+                    fArr.push(fnx); // add value to array value list
+                }
+                if (!fValues[fnx][vy]) {
+                    fValues[fnx][vy] = 0;  // if there isn't a target value property in the f value object, initialize
+                    fValues[fnx].keys.push(vy); // add the key for easy summation later
+                }
+                fValues[fnx].sum++; // add to the total count of this f value
+                fValues[fnx][vy]++; // add to the count of the target value for this f value object
+            }
+            // now calculate the actual probabilities by looping through the x values
+            fArr.map(fnx => {
+                let fx = fValues[fnx];   // shorthand cache the object property
+                fx.keys.map(vy => {     // for each value of y for those values of x
+                    fx.gini -= Math.pow((fx[vy] / fx.sum), 2); // subtract the probability squared
+                })
+                fValues.gini += fx.gini * (fx.sum / dataLength);
+            })
+            // debugger;
+            return fValues;
+        },
+        /**
         * Calculates gini impurity of feature x (fx) in relation to target y (fy) in dataset 
         * @description Gini index is an impurity-based criterion that measures the divergences between the probability distributions of the target attribute’s values. The Gini index has been used in various works such as (Breiman et al., 1984) and (Gelfand et al., 1991) 
         * @param {*} data 
         * @param {*} fx 
         * @param {*} fy 
         */
-        giniOptimized: function getGINIImpurityX(data, fy) {
-            let f = { best: { gini: 1 } },    // object of all sums based on feature values and within are the target values of those feature values
+        giniOptimized: function getGINIImpurityX(options) {
+            let data = options.data,
+                fy = options.fy
+                f = { 
+                    best: { 
+                        score  : 1,
+                        feature: false
+                    } 
+                },    // object of all sums based on feature values and within are the target values of those feature values
                 fArr = Object.keys(data[0]).filter(fx => { // get the keys
                     if (fx != fy) {           // make sure we're not taking the target variable
                         f[fx] = {
                             gini: 0, // gini for the feature
                             valuesArr: [],
                             valuesObj: {}
-                        };   // initialize each feature's gini obj
-                        return true;  // for filtering the array
+                        };              // initialize each feature's gini obj
+                        return true;    // for filtering the array
                     } else return false;
                 }),
-                fCount = fArr.length,   // caching for looping later
+                fCount = fArr.length,       // caching for looping later
                 dataLength = data.length;   // length of the input data
             for (let i = 0, il = dataLength; i < il; i++) {
-                let a = data[i],   // current record
+                let a = data[i],    // current record
                     vy = a[fy];     // value of target
                 for (let j = 0; j < fCount; j++) { // loop through all of the features in this record
                     let fName = fArr[j],   // get the current feature
@@ -157,20 +213,18 @@ const util = require('./util.js'),
                     }
                     fx.gini += fvx.gini * (fvx.sum / dataLength);
                 }
-                if (fx.gini < f.best.gini) f.best = Object.assign({feature: fArr[i], score: fx.gini}, fx);
+                if (fx.gini < f.best.score) f.best = Object.assign({feature: fArr[i], score: fx.gini}, fx);
             }
-            // console.log(Object.values(f));
-            // console.log(f);
-            // debugger;
             return f;
         },
+       
         gainNotOptimized: (options) => {
-            let nData =  options.data||false, 
-                nFeatures = options.features, 
-                nEntropy = options.entropy, 
-                target = options.tree.target;
-            let maxgain = {gain: 0},
-                gains = {};
+            let nData     = options.data||false,
+                nFeatures = options.features,
+                nEntropy  = options.entropy,
+                target    = options.target,
+                maxgain   = {gain: 0},
+                gains     = {};
             if (nData.length > 0){
                 console.log(`Selecting feature from ${nFeatures.join(', ')}`)
                 nFeatures.map((f, i) => {
@@ -188,6 +242,38 @@ const util = require('./util.js'),
         },
         gainOptimized: () => {
             // hasn't been written yet :(
+        },
+        group: (options) => {
+            let data    = options.data,
+                feature = options.feature,
+                op      = options.op || '==',
+                value   = options.value || false,
+                ret     = {values: [], data: {}};
+            if (value) {
+                for (let i = 0, il = data.length; i <il; i++){
+                    let x       = data[i],
+                        xiValue = x[feature],
+                        check   = calc.compare(xiValue, value, op),
+                        key     = `${check?'':'!'}${op}\|${value}`;
+                    if  (!ret.data[key]) {
+                        ret.data[key] = [];
+                        ret.values.push(key);
+                    }
+                    ret.data[key].push(x);
+                } 
+            } else {
+                for (let i = 0, il = data.length; i <il; i++){
+                    let x       = data[i],
+                        xiValue = x[feature],
+                        key     = `${op}\|${xiValue}`;
+                    if  (!ret.data[key]) {
+                        ret.data[key] = [];
+                        ret.values.push(key);
+                    }
+                    ret.data[key].push(x);
+                }
+            }
+            return ret;
         },
         /**
          * Calculates information gain using the entropy functions above (to be optimized later)
@@ -223,16 +309,83 @@ const util = require('./util.js'),
             }
         },
         gain: (options = {}) => {
-
+            let maxgain = {score: 0, feature: false},
+                gains   = {},
+                data    = options.data,
+                features= options.features || Object.keys(data[0]),
+                fy      = options.fy,
+                entropy = options.entropy || calc.entropy(data, fy)
+            if (data.length > 0){
+                console.log(`Selecting feature from ${features.join(', ')}`)
+                features.map((f, i) => {
+                    if (f != target) {
+                        let curgain = calc.gain(data, f, target, entropy);
+                        gains[f] = {
+                            feature: f,
+                            score  : curgain,
+                            i      : i
+                        };
+                        maxgain = curgain > maxgain.score?gains[f]:maxgain;
+                    };
+                })
+            } else console.log(`No data for ${this.id}, must be a leaf`);
+            return maxgain;
+        },
+        /**
+         * Used to get the best split of a certain feature in a dataset depending on the selected criterion and method
+         * WATERMELONNN! RESUME HERE
+         */
+        bestSplitFeature: (options = {}) => {
+            let method  = options.method || 'gini',
+                feature = options.feature,
+                target  = options.target,
+                data    = options.data.ascend(feature),
+                min     = options.min || 1;              // minimum number of samples in a split
+            switch (method){
+                case 'gini':
+                    // let values = [];
+                    // get all of the values of x and y
+                    // for (let i = 0, il = data.length; i < il; i++){
+                    //     let x = data[i][feature],
+                    //         y = data[i][target];
+                    //     values.push({x, y});
+                    // }
+                    let best = {
+                            score: 0,
+                            value: false
+                        },
+                        ginis = {};
+                    for (let i = 0, il = data.length - min; i < il; i++){
+                        let a = data[i],
+                            xv = a[feature];
+                        if (!ginis[xv]){
+                            let xg = calc.gini({
+                                    data: data,
+                                    fn: x => x[feature] <= xv,
+                                    feature,
+                                    target,
+                                });
+                            ginis[xv] = xg;
+                            if (xg.score > best.score) best = xg;
+                        }       
+                    }
+                return best;
+                // case 'gain':
+                // case 'random':
+            }
         },
         gini: (options = {}) => {
             let data = options.data || false,
-                fx   = optons.fx    || false,
-                fy   = oprions.fy   || false;
+                fx   = options.fx   || false,
+                fy   = options.fy   || false;
             if (!data || !fy) return new ReferenceError('Cannot calculate without data and target arguments');
             else {
                 let gini = calc[fx ? 'gini' : 'giniOptimized'](options);
-                if (gini.best) return {feature: }
+                if (gini.best) return {
+                    feature: gini.best.feature,
+                    score  : gini.best.score
+                }
             }
         }
     };
+module.exports = calc;
