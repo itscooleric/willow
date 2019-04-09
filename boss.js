@@ -131,16 +131,20 @@ async function masterInit() {
         let poorGuy = _.workers.find(a => a.process.pid = worker.process.pid),
             rework  = poorGuy.tasks.slice(0);
         _.onclock--;
-        if (_.onclock == 0) _.cob = true;
-        poorGuy.failed         = poorGuy.failed.concat(rework);
-        poorGuy.alive          = false;
+        if (_.onclock == 0) _.cob  = true;
+        poorGuy.failed          = poorGuy.failed.concat(rework);
+        poorGuy.alive           = false;
+        poorGuy.leftTheBuilding = true;
+        console.log('Señor, Worker ' + worker.process.pid + ' died with code: ' + code + ', and signal: ' + signal)
         // Let the master know what happened
-        rework.map(r => _.masterRecv({
-            success: false,
-            result : 'Señor, Worker ' + worker.process.pid + ' died with code: ' + code + ', and signal: ' + signal,
-            task   : r
-        }))
-        fork();
+        if (code == 1) {
+            rework.map(r => _.masterRecv({
+                success: false,
+                result : 'Señor, Worker ' + worker.process.pid + ' died with code: ' + code + ', and signal: ' + signal,
+                task   : r
+            }))
+            fork();
+        }
     });
     
     // Begins the bossFunction process
@@ -196,20 +200,73 @@ _.hire = function hireSafely(task){
     else if (task.constructor == Array) return _.hireAll(task)
     else return _.hireOne(task)
 }
-_.fire = function fireXAmountOfWorkers(count = Infinity){
+_.fireOne_rollback = async function fireOneWorker(worker){
+    try {
+        let workerBadge = worker.process.pid,
+            talksHad    = 0,
+            haveTheTalk = () => {
+                console.log(`Attempting to fire ${workerBadge}...`)
+                if (!worker.leftTheBuilding && worker.alive) {
+                    if (talksHad < 10){
+                        talksHad++;
+                        worker.send("you're fired");
+                        setTimeout(() => haveTheTalk(), 5000);
+                    } else {
+                        boss.out(`Worker ${workerBadge} just won't leave... don't worry, we still won't pay him`);
+                    }
+                }
+            };
+        haveTheTalk();
+        await _.wait(() => worker.leftTheBuilding || !worker.alive || talksHad > 10);
+        return true;
+    } catch (err) {
+        console.error(err);
+        debugger;
+        return err;
+    }
+}
+_.fireOne = async function fireOneWorker(worker){
+    try {
+        let workerBadge = worker.process.pid,
+            sentTime = Date.now();
+        console.log(`Attempting to fire ${workerBadge}...`)
+        worker.send("you're fired");
+        //  || Date.now() - sentTime > 10000
+        await _.wait(() => {
+            console.log(`Worker #${workerBadge} has${worker.leftTheBuilding?'':'n\'t'} leftTheBuilding and is${worker.alive?'':'n\'t'} alive and currently ${worker.state}!`)
+            return worker.leftTheBuilding || !worker.alive || worker.state != 'online'
+        }, 10000, 2000);
+        if (!worker.leftTheBuilding && worker.alive && worker.state == 'online') _.out(`Worker ${workerBadge} just won't leave... don't worry, we still won't pay him`);
+        return true;
+    } catch (err) {
+        console.error(err);
+        debugger;
+        return err;
+    }
+}
+_.fire = async function fireXAmountOfWorkers(count = Infinity){
     // Add protection for firing too many?
-    let firedWorkers = 0,
-        potentialWorkers = _.workers.length,
-        i = 0,
-        il = count < potentialWorkers?count:potentialWorkers;
-    _.out(`Firing up to ${il} workers :(`); 
-    while (firedWorkers < count && i < potentialWorkers){
-        let w = _.workers[i];
-        if (w.alive) {
-            w.send("you're fired");
-            w.alive = false;
-            firedWorkers++;
+    try {
+        let firedWorkers = 0,
+            potentialWorkers = _.workers.length,
+            i = 0,
+            il = count < potentialWorkers?count:potentialWorkers;
+        _.out(`Firing up to ${il} workers :(`); 
+        while (firedWorkers < count && i < potentialWorkers){
+            let w = _.workers[i];
+            if (w.alive) {
+                // w.send("you're fired");
+                await _.fireOne(w);
+                w.alive = false;
+                firedWorkers++;
+            }
+            i++;
         }
+    } catch (err) {
+        console.error(err);
+        debugger;
+    } finally {
+        return true;
     }
 }
 /**
@@ -303,7 +360,7 @@ function report(msg) {
 function workerRecv(task){
     if (task == "you're fired"){
         _.info(`It's been a pleasure working with you boss <3`);
-        process.exit(1);
+        process.exit(21);
     } else {
         _.workFunction(task)
         .then(res => {

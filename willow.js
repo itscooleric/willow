@@ -15,11 +15,12 @@ const util        = require('./util.js'),
     tree = function decisionTree(options = {}){
         this.data       = options.data;
         this.target     = options.target;
+        this.minSplit = options.minSplit || 5,
         this.features   = Object.keys(this.data[0]).filter(a => a != options.target);
         this.entropy    = crit.entropy(this.data, options.target);
         this.nodes      = {};
         this.nodeCount  = 0;
-        this.criterion  = 'gini',
+        this.criterion  = options.criterion || 'gini',
         this.pure       = false;
         this.trained    = false;
         this.queue      = [];
@@ -42,11 +43,15 @@ const util        = require('./util.js'),
         this.features  = this.tree.features;
         this.climbed   = options.isRoot || options.isLeaf;
         this.prototype = {};
-        this.criterion = options.criterion || this.tree.criterion,
-        this.target    = options.target || this.tree.target,
-        this.split     = this._selectFeature({data: this.data, fy: this.target}),
+        this.criterion = options.criterion || this.tree.criterion;
+        this.target    = options.target || this.tree.target;
+        this.minSplit  = options.minSplit || this.tree.minSplit;;
+        // Only get the best split if it isn't a leaf
+        this.split     = !this.isLeaf?this._selectFeature({data: this.data, fy: this.target}):false;
         this.id        = options.id||`${this.feature}_${this.value}`;
-        // this.isLeaf     = this.isLeaf? this.isLeaf:this.split.score == 0;
+        // if (this.value == '<=|0.8') debugger;
+        if (this.parent && !this.isLeaf) this.isLeaf =  this.split.score == 1 || this.split.score == 0;
+        // if (this.parent && !this.isLeaf) this.isLeaf =  this.parent.split.score == 1 || this.parent.split.score == 0;
         // debugger;
         if (!options.isRoot){
             // Generate the node id
@@ -100,8 +105,8 @@ tree.prototype = {
             // debugger;
         } else {
             // can be optimized here using pop instead or an object
-            let nextNode = this.queue.pop();
-            console.log(`~~ Starting ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
+            let nextNode = this.queue.shift();
+            console.log(`~~ Admiring ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
             switch (nextNode.isLeaf){
                 case false:
                     nextNode.branch();
@@ -137,8 +142,9 @@ node.prototype = {
         } else {
             let nProbs = this.children;
             // Object.keys(nProbs).map(prob => push(`${(+nProbs[prob]*100).toFixed(2)}% ${prob}`))
-
-            Object.keys(nProbs).map(prob => push(`${feature} ${op} ${value}: ${nProbs[prob]} ~ ${prob}`))
+            push(`${feature} ${op} ${value}:`);
+            Object.keys(nProbs).map(prob => push(`\t${+(nProbs[prob].toFixed(2))*100}% ~ ${prob}`))
+            // Object.keys(nProbs).map(prob => push(`${feature} ${op} ${value}: ${nProbs[prob]} ~ ${prob}`))
         }
     },
     /**
@@ -176,8 +182,9 @@ node.prototype = {
         let criterion = this.criterion,
             data      = options.data || this.data,
             best      = crit[criterion]({
-                data: data,
-                fy  : this.target,
+                data  : data,
+                target: this.target,
+                min   : options.minSplit || this.minSplit
             }),
             leaf = best.score == 0;
         return Object.assign(best, {leaf});
@@ -195,7 +202,8 @@ node.prototype = {
             bData     = {},                    // the data that will be passed on to the different nodes
             bLeaf     = split.leaf,
             bValues   = [],
-            groupData   = crit.group({data: nData, feature: bFeature});
+            groupData   = this.criterion == 'gain'?crit.group({data: nData, feature: bFeature}):
+                                            crit.group({data: nData, feature: bFeature, value: split.value, op: '<='})
         // Faster method... but harder to keep track of
         let manual = () => {
             let tData = nData.slice(0);
@@ -226,7 +234,7 @@ node.prototype = {
                 id     : bvKey,
                 // value is the key of node data
                 tree   : this.tree,
-                parent : this.branch,
+                parent : this,
                 depth  : nDepth+1,
                 isLeaf : bLeaf
             })
@@ -261,23 +269,43 @@ const init = async () => {
             target: 'play'
         },
         vote: {
-            data  : (await util.read('./examples/vote/train.csv')).parseInt(),
+            data  : await util.read('./examples/vote/train.csv'),
             target: 'class'
         },
         vowel: {
-            data  : (await util.read('./examples/cars_etc/vowel.csv')).parseInt(),
+            data  : await util.read('./examples/cars_etc/vowel.csv'),
             target: 'class'
         },
         lenses: {
-            data  : (await util.read('./examples/cars_etc/lenses.csv')).parseInt(),
+            data  : await util.read('./examples/cars_etc/lenses.csv'),
             target: 'lense'
         },
         iris: {
-            data  : (await util.read('./examples/cars_etc/iris.csv')).parseInt(),
+            data  : await util.read('./sklearn/iris/iris.csv'),
             target: 'class'
         },
     }
-    debugger;
+    // let pickSplit = () => crit.bestSplitFeature(Object.assign({
+    //     feature: 'petal_length',
+    //     data   : sample.iris.data,
+    //     target : sample.iris.target,
+    //     min    : 5
+    // }));
+    // console.log(profiler(() => pickSplit(), 10000))
+    // debugger;
+    sample.iris.data.parseInt();
+    let ft = crit.bestSplitFeature(Object.assign({
+        feature: 'petal_width',
+        data   : sample.iris.data,
+        target : sample.iris.target,
+        // debug  : true
+        // min    : 5
+    }))
+    console.log(ft);
+    // new tree(Object.assign({criterion: 'gain'}, sample.weather)).fit()
+    // debugger;
+    // sample.iris.data.parseInt();
+    new tree(sample.iris).fit()
     // let sampleKeys = ['outlook', 'humidity', 'temperature', 'wind'];
     // console.log(`Multiple`)
     // console.log(profiler(() => sampleKeys.map(a => crit.gini(sample.weather.data,a, 'play')), 1000000));

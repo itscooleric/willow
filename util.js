@@ -219,6 +219,106 @@ const fs = require('fs'),
             for (var key in obj) newArr.push(obj[key]);
             return newArr;
         },
+        uniqueExcept: function removeDuplicates(prop = false, except = false) {
+            var obj = {},
+                keys = Object.keys(this[0]).filter(a => a != prop && !except.includes(a));
+            for (var i = 0, len = this.length; i < len; i++) {
+                if (!obj[this[i][prop]]) obj[this[i][prop]] = [this[i]];
+                else {
+                    let isDifferent = false,
+                        lst = obj[this[i][prop]].slice(-1)[0];
+                    for (let j = 0, jl = keys.length; j < jl && !isDifferent; j++){
+                        let k = keys[j];
+                        isDifferent = this[i][k] != lst[k]                    
+                    }
+                    if (isDifferent) obj[this[i][prop]].push(this[i])
+                }
+            }
+            var newArr = [];
+            for (var i in obj) newArr = newArr.concat(obj[i]);
+            return newArr;
+        },
+        uniqueOrdered:  function removeDuplicates(options) {
+            let idCol     = options.id,
+                dateCol   = options.date,
+                isTime    = options.time,
+                // todo Fix this argument setup
+                ascend    = options.ascend || true,
+                ignoreCol = options.ignore?options.ignore.concat([idCol, dateCol]) : [idCol, dateCol],
+                getOrder = (arg1, arg2) => {
+                    return ascend?arg1<arg2:arg1>arg2
+                };
+                // Stats stuff to be removed in production
+                // start = performance.now(),
+                // matches = 0,
+                // matchRep = 0,
+                // nonmatches = 0;
+            if (idCol && dateCol){
+                let obj      = {},
+                    allKeys =  Object.keys(this[0]),
+                    keys     = allKeys.filter(a => !ignoreCol.includes(a)),
+                    tmpCol   = `${dateCol}`,
+                    keyCount = keys.length;
+                // Generate a key not in the columnset :(
+                while (allKeys.includes(tmpCol)) tmpCol = `${dateCol}${Math.random()*Date.now()}`;
+                // Sort the data;
+                // start = performance.now();
+                this.map(a => {
+                    let id    = a[idCol],
+                        date  = a[dateCol].stamp(isTime),
+                        match = false;
+                    // Save it for calculations later
+                    a[tmpCol] = date;
+                    if (!obj[id]) obj[id] = [a];
+                    for (let o = 0, ol = obj[id].length; o < ol && !match; o++){
+                        let b = obj[id][o],
+                            isDifferent = false
+                        for (let j = 0; j < keyCount && !isDifferent; j++){
+                            let k = keys[j];
+                            isDifferent = a[k] != b[k]
+                        }
+                        if (!isDifferent) match = o;
+                    }
+                    if (!match) {
+                        // nonmatches++;
+                        obj[id].push(a);
+                    } else {
+                        // matches++;
+                        if (getOrder(a[tmpCol], obj[id][match][tmpCol])) {
+                            // matchRep++;
+                            obj[id][match] = a;
+                        }
+                    }
+                })
+                // let end = performance.now(),
+                //     total =( end - start),
+                //     per = total/this.length;
+                // console.log(`Ordered Unique Except Performance: Total - ${total.toFixed(5)} ms |\t ${per.toFixed(5)} items/ms |\t ${matches}/${nonmatches+matches} matches |\t ${matchRep}/${matches} match replacements`)
+                let newArr = [];
+                for (var i in obj) {
+                    obj[i].map(a => {
+                        delete a[tmpCol];
+                        newArr.push(a);
+                    });
+                };
+                // console.log(`${performance.now() - end} to repush/delete`)
+                return newArr;
+            } else {
+                return new Error('Not all required arguments defined')
+            }
+        },
+        
+        uniquePromise: async function removeDuplicates(prop = false) {
+            var obj = {};
+            if (prop) for (var i = 0, len = this.length; i < len; i++) {
+                if (!obj[this[i][prop]]) obj[this[i][prop]] = this[i];
+            } else for (var i = 0, len = this.length; i < len; i++) {
+                if (!obj[this[i]]) obj[this[i]] = this[i];
+            }
+            var newArr = [];
+            for (var key in obj) newArr.push(obj[key]);
+            return newArr;
+        },
         merge: function (column1, data2, column2, authority = 0) {
             let startTime = performance.now(),
                 data1 = this.slice(0),
@@ -348,28 +448,36 @@ const fs = require('fs'),
             }
         },
         // Data stuff
-        write: function (fileName = false, delimeter = ',', quotes = true){
+        report: function saveFileAsReport(loc = 'C:/Users/N36-1/Documents/_Codebox/codeboxReport.csv', delimeter = ',', quotes = true){
+            let fileStamp = new Date().stamp(true),
+                loc2 = loc.replace(/ /g, '_').toUpperCase().replace('.', '_'+fileStamp+'.');
+            console.log(`Exporting ${loc.slice(loc.lastIndexOf('/'))} as ${loc2.slice(loc.lastIndexOf('/'))}`);
+            return this.write(loc2, delimeter, quotes);
+        },
+
+        write: function (fileName = false, delimeter = '\t', quotes = true, rob = false){
             return new Promise((resolve, reject) => {
                 try {
-                    let tdel = fileName?fileName.length == 1? fileName:delimeter:delimeter,
-                        tfn = fileName? fileName.length > 1? fileName:delimeter.length > 1?delimeter:false:false,
-                        q = quotes?'"':'',
-                        th = Object.keys(this[0]).filter(a => {
-                            let tcon = this[0][a]?this[0][a].constructor:Number,
+                    let tdel = rob?'\t':fileName?fileName.length == 1? fileName:delimeter == false? ',':delimeter:delimeter,
+                        tfn  = fileName? fileName.length > 1? fileName:delimeter.length > 1?delimeter:false:false,
+                        q    = delimeter?quotes?'"':'':'',
+                        th   = Object.keys(this[0]||{}).filter(a => {
+                            let tcon  = this[0][a]?this[0][a].constructor:Number,
                                 tgood = tcon != Array && tcon != Object;
                             if (!tgood) console.log(`Dropping ${a} from csv export because of data type`);
                             return tgood;
                         }),
-                        dhead = `${th.map(a => q + a + q).join(tdel)}\n`
-                        dbody = `${this.map(t => {
-                            return th.map(h => q + ((typeof t[h] == 'undefined'?null:t[h]) + '').replace(/\n|\"|"/g, '') + q).join(tdel)
-                        }).join('\n')}`;
-                    if (tfn)  fs.writeFile(tfn, dhead+dbody, err => {
+                        dbody = `${th.map(a => q + rob?a.toLowerCase().replace(/ /g, '_'):a + q).join(tdel)}`;
+                    this.map(t => {
+                        dbody += `\n`
+                        dbody += th.map(h => `${q}${((typeof t[h] == 'undefined'?'':t[h])+'').replace(/\n|\"|"/g, '')}${q}`).join(tdel)
+                    });
+                    if (tfn)  fs.writeFile(tfn, dbody, err => {
                             if (err) reject(err)
                             else resolve(true);
                         })
-                    else resolve(dhead+dbody) 
-                    tm = null, th = null, dhead = null, dbody = null;
+                    else resolve(dbody) 
+                    tm = null, th = null, dbody = null;
                 } catch (err) {
                     console.log(err)
                     reject(err)
@@ -456,10 +564,34 @@ const fs = require('fs'),
             }
         },
     },
+    function: {
+        speed: function (limit = 10000){
+            let res = [];
+            while (res.length < limit){
+                let start = performance.now();
+                fn()
+                res.push(performance.now() - start)
+            }
+            res = res.sort((a, b) => a > b?1:-1);
+            let sum =  res.reduce((a, b) => a + b, 0),
+                ret = {
+                min   : res[0],
+                max   : res[limit-1],
+                total : sum,
+                mean  : sum/limit,
+                median: res[limit/2-1],
+                limit
+            }
+            return ret;
+        },
+        perf: function (limit = 10000) {
+            return this.speed(limit)
+        }
+    },
     date: {
         stamp: function(isTime = false, joinBy = '') {
             let ret = [this.getFullYear(), (this.getMonth()+1).pad(), (this.getDate()).pad()];
-            if (isTime) ret = ret.concat([joinBy, this.getHours().pad(), this.getMinutes.pad()])
+            if (isTime) ret = ret.concat([joinBy, this.getHours().pad(), this.getMinutes().pad()])
             return ret.join('');
         },
         mmddyyyy: function(pad = false){
@@ -529,7 +661,7 @@ const fs = require('fs'),
             let date = new Date(this),
                 ret = [date.getFullYear(), (date.getMonth()+1).pad(), (date.getDate()).pad()];
             if (time) ret = ret.concat([joinBy, date.getHours().pad(), date.getMinutes.pad()])
-            return ret.join('');
+            return ret.join(joinBy);
         },
         date: function(str = true){
             if (str) return new Date(this).format()
@@ -557,6 +689,41 @@ const fs = require('fs'),
         pad: function(padding = 2){
             return this.length < padding ? new Array(padding - this.length).fill('0').concat(this).join('') : this
         },
+        parseFloat: function() {
+            return parseFloat(this.replace(/[^0-9.]/g, ''))
+        },
+        // Date Functions
+        date: function () {
+            return new Date(this).format()
+        },
+        format: function () {
+            return new Date(this).format()
+        },
+        stamp: function (time = false, joinBy = '') {
+            return new Date(this).stamp(time, joinBy)
+        },
+        fy: function() {
+            return new Date(this).fy()
+        },
+        monthName: function() {
+            return new Date(this).monthName()
+        },
+        between: function (fromDate, toDate) {
+           return new Date(this).fy(fromDate, toDate)
+        },
+        time: function(sw = false) {
+          return new Date(this).time(sw)
+        }, 
+        dateTime: function() {
+            return new Date(this).dateTime()
+        },
+        yesterday: function() {
+            return new Date(this).yesterday()
+        },
+        parse: function() {
+            // return new Date(this).parse()
+            return Date.parse(this);
+        }
     },
     object: {
         // write: loc => {
@@ -579,6 +746,30 @@ const fs = require('fs'),
     }
 };
 e = {
+    speed: function getFunctionSpeed (fnArr, limit = 10000) {
+        let fns = fnArr.constructor == Array?fnArr:fnArr.constructor == Function?[fnArr]:false,
+            res = [];
+        if (fns) {
+            fns.map(a => {
+                let perf = a.perf(limit);
+                res.push(Object.assign({
+                    name: a.name,
+                    fn  : a,
+                }, perf));
+            })
+            res = res.sort((a, b) => a.total > b.total?1:-1);
+            console.log(`Evaluated ${fns.length} functions ${limit} times; Fastest is ${per[0].name}`);
+            console.log(res)
+        } else {
+            console.log(`Invalid arguments selected, sorry friend :(`)
+        }
+    },
+    move: (loc1, loc2) => new Promise((resolve, reject) => {
+        fs.rename(loc1, loc2, err => {
+            if (err) reject(err);
+            else resolve(true);
+        })
+    }),
     ext: loc => loc.substr(loc.lastIndexOf('.')),
     open: loc => new Promise((resolve, reject) => {
         fs.readFile(loc, 'UTF-8', (err, data) => {
@@ -594,28 +785,41 @@ e = {
     }),
     fix: (arr) => {
         let tkeys = Object.keys(arr[0]),
-            nkeys = [];
+            nkeys = [],
+            kcount = tkeys.length,
+            badLines = 0,
+            narr = [];
         tkeys.map((k, i) => {
-            if (/\r|\n|"|\"/g.test(k)) {
+            if (/[^\w_ -]/g.test(k)) {
                 nkeys.push({
                     old: k,
-                    new: k.replace(/\r|\n|"|\"/g, '')
+                    new: k.replace(/[^\w_ -]/g, '')
                 })
             }
         })
         arr.map(row => {
+            let shouldPush = true;
             nkeys.map(key => {
-                row[key.new] = (row[key.old]+'').replace(/\r|\n|"|\"/g, '');
-                delete row[key.old];
+                if (!row[key.old]) shouldPush = false;
+                else {
+                    row[key.new] = (row[key.old]+'').replace(/\r|\n|"|\"/g, '');
+                    delete row[key.old];
+                }
             })
+            if (kcount != Object.keys(row).length || !shouldPush) badLines++;
+            else narr.push(row);
         })
-        return arr;
+        // console.log(`Fixed ${nkeys.length} columns and removed ${badLines} bad lines`)
+        return narr;
     },
     read: (loc, fast = false) => new Promise((resolve, reject) => {
         e.open(loc)
         .then(data => {
+            // console.log(e.ext(loc));
             switch (e.ext(loc)){
+                case('.TXT'):
                 case('.txt'):
+                case('.CSV'):
                 case('.csv'):
                     papa.parse(data, {
                         header: true,
@@ -654,6 +858,12 @@ e = {
             debugger;
         }
     },
+    report: (data, loc, delimeter = ',') => {
+        let fileStamp = new Date().stamp(true),
+            loc2 = loc.replace('.', fileStamp+'.').replace(/ /g, '_').toLowerCase();
+        console.log(`Exporting ${loc.slice(loc.lastIndexOf('/'))} as ${loc2.slice(loc.lastIndexOf('/'))}`);
+        return e.write(data, loc2, delimeter);
+    },
     delete: loc => new Promise((resolve, reject) => {
         fs.unlink(loc, err => {
             if (err) {
@@ -662,8 +872,46 @@ e = {
             } else resolve()
         })
     }),
-    scan: loc => new Promise((resolve, reject) => {
-        fs.readdir(loc, (err, data) => {
+    scan: async (loc, filter = 0, detail = false) => new Promise((resolve, reject) => {
+        // 1 = files only
+        // 2 = folders only
+        fs.readdir(loc, async (err, predata) => {
+            if (err) reject(err);
+            else {
+                let data = predata.filter(a => filter == 0||filter == false?true:filter==1?a.indexOf('.')>=0:a.indexOf('.')<0);
+                if (detail) {
+                    let filled = 0,
+                        filllim = data.length,
+                        detArr = [];
+                    data.map(a => {
+                        let path = (`${loc}/${a}`).replace('//', '/');
+                        // console.log(`Getting info for ${path}`)
+                        e.stat(path)
+                        .then(b => {
+                            detArr.push(Object.assign({name: a, path: path, loc: loc}, b));
+                            filled++;
+                        })
+                        .catch(err => {
+                            console.error(`Error with ${path}`);
+                            console.error(err);
+                            filled++;
+                        })
+                    })
+                    await e.wait(() => filled == filllim)
+                    resolve(detArr)
+                }
+                else resolve(data);
+            }
+        })
+    }),
+    stat: loc => new Promise((resolve, reject) => {
+        fs.stat(loc, (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+        })
+    }),
+    info: loc => new Promise((resolve, reject) => {
+        fs.stat(loc, (err, data) => {
             if (err) reject(err);
             else resolve(data);
         })
@@ -718,44 +966,39 @@ e = {
 /** 
  * Task Estimated Time of Completion Section
  * This will calculate ETA/ETC for different transactions
- * TODO:
- *      IMPLEMENT DAMNIT!
- *      Maybe also add a class thats like a dataframe or matrix that runs these things well....
- *      Integrate weighted formula
  */
 e.task = {
     list: [],
-    init: (taskName, taskLength, taskInterval = 1000, taskStart = Date.now()) => {
-        if (taskName && taskLength){
-            let ti = _.task.list.length,
+    init: (options = {}) => {
+        let name     = options.name,
+            count    = options.count || 0,
+            interval = options.interval || 1000,
+            start    = options.start || Date.now();
+        if (name && count){
+            let ti = e.task.list.length,
                 t = {
-                    // Keep track of which task
-                    id: ti,
-                    // Name for each task
-                    name: taskName,
-                    // Begining of task
-                    start: taskStart,
-                    // Length for computing etc and detecting completion
-                    il: taskLength,
-                    // Index of the current process
-                    i: 0,
-                    status: '',
-                    table: {},
-                    etc: 0,
+                    id      : ti,
+                    name    : name,
+                    start   : start,
+                    il      : count,
+                    i       : 0,
+                    status  : '',
+                    msg     : '',
+                    table   : {},
+                    etc     : 0,
                     complete: null
                 };
-            t.msg = msg =>  _.log(msg)
-            // To clear completion
+            t.setMsg = msg => t.msg = msg;
             t.end = (quit = t.i < t.il, reason = 'Something broke') => {
                 if (!quit){
                     t.status = 'Complete';
                 } else {
                     t.status = 'Aborted'
-                    t.msg = `Quit at ${((t.i/t.il)*100).toFixed(2)}% / ${_tbd.time(Date.now() - t.start, true)}: ${reason}`;
+                    t.msg = `Quit at ${((t.i/t.il)*100).toFixed(2)}% / ${(Date.now() - t.start).time(true)}: ${reason}`;
                 }
                 setTimeout(() => {
                     let totalTime = Date.now() - t.start;
-                    ui.log(`Successfully completed operation '${t.name}' after ${_tbd.time(totalTime, true)} at ~${(t.il/(totalTime/1000)).toFixed(2)} items/sec`)
+                    console.log(`Successfully completed operation '${t.name}' after ${totalTime.time(true)} at ~${(t.il/(totalTime/1000)).toFixed(2)} items/sec`)
                     t.complete = Date.now();
                 }, 3000)
             }
@@ -764,40 +1007,40 @@ e.task = {
                 let elapsed       = Date.now() - t.start,
                     rowsRemaining = t.il - t.i,
                     timeRemaining = rowsRemaining * (elapsed/t.i),
-                    estimatedTime = tb.time(timeRemaining, true),    //tb.dateTime(new Date(Date.now()+timeRemaining)),
+                    estimatedTime = timeRemaining.time(true),
                     progress      = ((t.i/t.il)*100).toFixed(2);
-                    // Strings for the array. Sort of useless variables but good for debugging. Clean up for production
                 t.table = {
-                    id: t.id,
-                    status: t.status,
-                    name: t.name,
-                    progress: progress+'%',
-                    count: t.i+'/'+t.il,
-                    elapsed: tb.time(elapsed, true),
-                    estimated:`${/Invalid|NaN/i.test(estimatedTime)?'End of Time':estimatedTime}`,
-                    msg: t.msg,
+                    id       : t.id,
+                    status   : t.status,
+                    name     : t.name,
+                    progress : progress+'%',
+                    count    : t.i+'/'+t.il,
+                    elapsed  : elapsed.time(true),
+                    estimated: `${/Invalid|NaN/i.test(estimatedTime)?'End of Time':estimatedTime}`,
+                    msg      : t.msg,
                 };
+                e.table(t.table);
                 if (t.i < t.il && !t.complete) t.timeout();
                 else t.end()
             }
             // Timeout to update the status
             t.timeout = () => setTimeout(() => t.update(), 1000)
             t.update();
-            _.task.list.push(t)
-            _.status(`Initiated task titled ${taskName} at ${_tbd.dateTime(new Date())}`, 1500)
+            e.task.list.push(t)
+            console.log(`Initiated task titled ${name} at ${new Date().dateTime()}`)
             return t.id;
-        } else _.status(`Unable to initiate new task. Invalid parameters submitted.`, 4000);
+        } else console.log(`Unable to initiate new task. Invalid parameters submitted.`);
         return false;
     },
     report: (taskID, killTask = 0) => {
-        let t = _.task.list[taskID];
+        let t = e.task.list[taskID];
         if (!t) console.error('Invalid taskID');
         else if (killTask == 0) t.i++
         else if (killTask == 1) t.i = t.il;
         else if (killTask == -1) t.complete = true;
     },
     
-}
+};
 e.initObj = {
     array: {
         type: Array,
