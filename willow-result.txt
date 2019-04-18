@@ -3,19 +3,19 @@ TREE ROOT
 -------
 petal_width <= 0.8:
 	100% ~ Iris-setosa
-petal_width !<= 0.8:
+petal_width > 0.8:
 	petal_width <= 1.7:
-		petal_length !<= 4.9:
+		petal_length > 4.9:
 			33% ~ Iris-versicolor
 			67% ~ Iris-virginica
 		petal_length <= 4.9:
 			sepal_length <= 5.300000000000001:
 				17% ~ Iris-virginica
 				83% ~ Iris-versicolor
-			sepal_length !<= 5.300000000000001:
+			sepal_length > 5.300000000000001:
 				100% ~ Iris-versicolor
-	petal_width !<= 1.7:
-		petal_length !<= 4.95:
+	petal_width > 1.7:
+		petal_length > 4.95:
 			100% ~ Iris-virginica
 		petal_length <= 4.95:
 			83% ~ Iris-virginica

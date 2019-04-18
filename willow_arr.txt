@@ -1,10 +1,10 @@
 /**
  * Weeping Willows
  * the man himself: http://www.stat.wisc.edu/~loh/treeprogs/
- *
+ * 
  * example datasets: http://archive.ics.uci.edu/ml/index.php && ftp://ftp.ics.uci.edu/pub/machine-learning-databases/
  * ml stuff: ftp://ftp.ics.uci.edu/pub/
- *
+ * 
  */
 const util        = require('./util.js'),
       crit        = require('./crit.js'),
@@ -15,92 +15,75 @@ const util        = require('./util.js'),
 e.tree = function decisionTree(options = {}){
     this.data      = options.data || [];
     this.target    = options.target || false;
-    this.minSplit  = options.minSplit || 5;
-    this.maxDepth  = options.maxDepth || false;
-    let target = this.target;
-    try {
-        // console.log(this.data[0]);
-        this.features  = this.features || options.features || [];
-        if (this.data.length > 0 && this.features.length == 0) this.features = Object.keys(this.data[0]).filter(a => a != target);
-    } catch (err){
-        console.error(err);
-        debugger;
-    }
-    // this.entropy   = crit.entropy(this.data, options.target);
-    this.nodes     = options.nodes || [];
-    this.nodeCount = options.nodeCount || 0;
-    this.criterion = options.criterion || 'gini';
-    this.pure      = options.pure || false;
-    this.trained   = options.trained || false;
-    this.queue     = options.queue || [];
+    this.minSplit  = options.minSplit || 5,
+    this.maxDepth  = options.maxDepth || false,
+    this.features  = Object.keys(this.data[0]).filter(a => a != options.target);
+    this.entropy   = crit.entropy(this.data, options.target);
+    this.nodes     = [];//{};
+    this.nodeCount = 0;
+    this.criterion = options.criterion || 'gini',
+    this.pure      = false;
+    this.trained   = false;
+    this.queue     = [];
     if (this.entropy == 0){
         console.error(`Something interesting has occured, entropy is 0! Could mean there is no target, or that there is nothing to learn`);
         debugger;
     }
     return this;
 };
-e.node = function decisionTreeNode(options, queueSplit = true){
+e.node = function decisionTreeNode(options){
     this.data     = options.data;              // the data for this node to use
-    // if (this.data) debugger;
     this.tree     = options.tree;              // the tree this node belongs to
-    this.children = options.children || {};                        // where the children of the node are
+    this.children = [];                        // where the children of the node are
     this.parent   = options.parent  || false;
-    // this.id       = this.tree.nodeCount;
-    // this.tree.nodeCount++;
+    this.id       = this.tree.nodeCount;
+    this.tree.nodeCount++;
     this.depth     = options.depth   || 0;
-    // this.entropy   = crit.entropy(this.data, this.tree.target);  //options.entropy;           // starting entropy for this node
+    this.entropy   = crit.entropy(this.data, this.tree.target);  //options.entropy;           // starting entropy for this node
     this.feature   = options.feature ||'root';                   // feature this node was branched on
     this.value     = options.value   ||'root';                   // value of the feature of this node
-    this.isRoot    = options.isRoot  || false;                   // will determine if we need to add it to the nodes
+    this.isRoot    = options.isRoot  || false;                   // will determine if we need to add it to the nodes 
     this.isLeaf    = options.isLeaf  || false;                   // if it's a leaf, we won't split
-    this.op        = options.op      || '<=';
+    this.op        = options.op || '';
     this.features  = this.tree.features;
-    this.climbed   = options.isRoot  || options.isLeaf;
+    this.climbed   = options.isRoot || options.isLeaf;
     this.prototype = {};
     this.criterion = options.criterion || this.tree.criterion;
-    this.target    = options.target    || this.tree.target;
-    this.minSplit  = options.minSplit  || this.tree.minSplit;
-    this.split     = options.split|| false;
-    if (queueSplit){
-        if (!this.data) debugger;
-        // Only get the best split if it isn't a leaf
-        if (!this.split && !this.isLeaf) this.split = this._selectFeature({data: this.data, fy: this.target});
-        // this.id        = options.id||`${this.feature}_${this.value}`;
-        // if (this.value == '<=|0.8') debugger;
-        // THIS IS THE CURSED LINE!!!
-        if (!this.isRoot && !this.isLeaf) this.isLeaf =  this.split.score == 1 || this.split.score == 0;
-        // if (this.parent && !this.isLeaf) this.isLeaf =  this.parent.split.score == 1 || this.parent.split.score == 0;
-        // debugger;
-        if (!options.isRoot){
-            // Generate the node id
-            let id   = this.id,
-                tree = this.tree;
-            // Add the node to the tree
-            if (!this.isRoot) tree.nodes.push(this);
-            else this.tree.root = this;
-        }
+    this.target    = options.target || this.tree.target;
+    this.minSplit  = options.minSplit || this.tree.minSplit;
+    // Only get the best split if it isn't a leaf
+    this.split     = !this.isLeaf?this._selectFeature({data: this.data, fy: this.target}):false;
+    // this.id        = options.id||`${this.feature}_${this.value}`;
+    // if (this.value == '<=|0.8') debugger;
+    if (this.isRoot && !this.isLeaf) this.isLeaf =  this.split.score == 1 || this.split.score == 0;
+    // if (this.parent && !this.isLeaf) this.isLeaf =  this.parent.split.score == 1 || this.parent.split.score == 0;
+    // debugger;
+    if (!options.isRoot){
+        // Generate the node id
+        let id   = this.id,
+            tree = this.tree;
+        // Add the node to the tree
+        // if (!this.isRoot) tree.nodes[id] = this;
+        tree.nodes.push(this);
+        tree.queue.push(this);
     }
-    this.tree.queue.push(this);
     return this;
 };
 e.load = async function(txt) {
     try {
         // this function will return a new Tree from a JSON model
-        let model = txt.constructor == String?JSON.parse(txt):txt,
-            tree  = new e.tree(model);
-        // Object.assign(tree, model);
-        tree.nodes.splice(0).map(a => {
-            a.tree = tree;
-            a = new e.node(a, false);
+        let model = JSON.parse(txt),
+            tree  = new e.tree();
+        Object.assign(tree, model);
+        tree.nodes.map(a => {
             // Give them their homes back
-            // a.tree = tree;
+            a.tree = tree;
             // Give them their children back
-            if (a.feature == 'root') tree.root = a;
-            Object.keys(a.children).map(b => a.children[b].parent = a);
+            a.children.map(b => b.parent = a);
         });
         return tree;
     } catch (err) {
-        console.error(err.stack);
+        console.error(err);
         debugger;
         return err;
     }
@@ -109,23 +92,16 @@ e.save = async function saveToJSON(model, keepData = false) {
     try {
         // This function will return JSON string of the model...
         let tempObj = {...model},
-            delKeys = keepData?['parent', 'tree']:['parent', 'tree', 'data'],
-            emptobj = {};
-        delKeys.map(a => emptobj[a] = [])
-        if (!keepData) tempObj.data - [];
+            delKeys = keepData?['parent', 'tree']:['parent', 'tree', 'data'];
         delKeys.map(a => delete tempObj[a]);
-
-        // tempObj.nodes = tempObj.nodes.slice(0);
-        tempObj.nodes = tempObj.nodes.slice(0).concat(model.root);
-
+        tempObj.nodes = tempObj.nodes.slice(0);
         tempObj.nodes.map(a => {
-            Object.assign(a, emptobj)
-            delete a.protptype;
-            // delKeys.map(b => delete a[b])
+            a = {...a};
+            delKeys.map(b => delete a[b])
         });
         console.log(model);
         console.log(tempObj);
-        // debugger;
+        debugger;
         return JSON.stringify(tempObj);
     } catch (err){
         console.error(err);
@@ -133,36 +109,24 @@ e.save = async function saveToJSON(model, keepData = false) {
         return err;
     }
 }
-e.tree.prototype = {
+e.tree.prototype = { 
     // Determine what the variable should be used to split...
-    fit: async function trainModel(options = {}){
-        if (options.constructor == Array){
-            // Options is a dataset
-            this.data = options;
-        } else {
-            // Options object
-            Object.keys(options).map(a => this[a] = options[a]);
+    fit: async function trainModel(data){
+        this.entropy = crit.entropy(this.data, this.target);
+        this.nodes.push(new e.node({
+            data   : data || this.data,
+            entropy: this.entropy,
+            feature: 'root',
+            value  : 'root',
+            isRoot : true,
+            tree   : this
+        }));
+        if (this.data[0][this.target]) this.nodes[0].branch();
+        else {
+            console.error('Target variable could not be found! Terminating')
+            debugger;
         }
-        if (this.data.length > 0){
-            this.nodes = [];
-            if (this.criterion == 'gain') this.entropy = crit.entropy(this.data, this.target);
-            this.root = new e.node({
-                data   : this.data,
-                entropy: this.entropy,
-                feature: 'root',
-                value  : 'root',
-                isRoot : true,
-                tree   : this
-            });
-            if (this.data[0][this.target]) this.root.branch();
-            else {
-                console.error('Target variable could not be found! Terminating')
-                debugger;
-            }
-            return this;
-        } else {
-            return new Error('This tree has no data');
-        }
+        return this;
     },
     print: async function logTreeQuestions(){
         this.output = '';
@@ -170,12 +134,12 @@ e.tree.prototype = {
             console.log(this.nodes)
             console.log(`Printing the tree!`)
             // debugger;
-            this.root.print();
+            this.nodes[0].print();
             console.log(this.output);
             await util.write(this.output, 'willow-result.txt');
             console.log(`Printing complete!`);
-            console.log(this.root.children);
-            // debugger;
+            console.log(this.nodes[0].children);
+            debugger;
             // console.log(this.nodes);
             // debugger;
         }
@@ -191,8 +155,8 @@ e.tree.prototype = {
             // can be optimized here using pop instead or an object
             let nextNode = this.queue.shift();
             console.log(`~~ Admiring ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
-            // switch (!nextNode.isLeaf){
-            switch (!nextNode.isLeaf && (!nextNode.tree.maxDepth || nextNode.tree.maxDepth >= nextNode.depth)){
+            switch (!nextNode.isLeaf){
+            // switch (!nextNode.isLeaf && (!nextNode.tree.maxDepth || nextNode.tree.maxDepth >= nextNode.depth)){
                 case true:
                     nextNode.branch();
                     break;
@@ -203,13 +167,12 @@ e.tree.prototype = {
         };
     },
     route: async input => {
-        let curNode     = this.root,
+        let curNode     = this.nodes[0],
             reachedLeaf = false;
         while (!reachedLeaf){
-            let foundKid = false,
-                roster = Object.keys(curNode.children);
-            for (let i = 0, il = roster.length; i < il && !foundKid; i++){
-                let kid = curNode.children[roster[i]];
+            let foundKid = false;
+            for (let i = 0, il = curNode.children.length; i < il && !foundKid; i++){
+                let kid = curNode.children[i];
                 if (crit.compare(input[kid[feature]], kid[value], kid.op)){
                     foundKid    = true;
                     reachedLeaf = kid.isLeaf;
@@ -234,7 +197,7 @@ e.tree.prototype = {
                         }
                         if (!missingFeature) return this.route(input);
                         else return new Error('Some feature is missing! TODO: Report what feature')
-                    }
+                    } 
                     else return this.route(input);
                 default:
                     return new Error('What is this data type?!');
@@ -250,7 +213,7 @@ e.tree.prototype = {
                 case Object:
                     return this.predictOne(input);
                 case Array:
-
+                    
                     return result;
                 default:
                     return new Error('What is this data type?!');
@@ -302,7 +265,7 @@ e.tree.prototype = {
     //     // SHIT... maybe one should just remove the tree and parents then export
     //     // then add the tree and parents back....
 
-
+        
     // }
 };
 e.node.prototype = {
@@ -312,7 +275,7 @@ e.node.prototype = {
             value   = this.value,
             op      = this.op,
             // [feature, op, value] = this.id.split('~'),
-            // op     = '==',
+            // op     = '==',                                 
             // operator - more useful later when using continuous variables
             output = [],
             tabs   = new Array(d).join('\t'),
@@ -323,14 +286,16 @@ e.node.prototype = {
             let nKids = this.children;
             if (!this.isRoot) push(`${feature} ${op} ${value}:`);
             else push(`TREE ROOT\n-------`)
-            Object.keys(nKids)
+            // Object.keys(nKids)
+            nKids
                 .sort(a => nKids[a].isLeaf?-1:1)
                 .map(name => nKids[name].print())
         } else {
             let nProbs = this.children;
             // Object.keys(nProbs).map(prob => push(`${(+nProbs[prob]*100).toFixed(2)}% ${prob}`))
             push(`${feature} ${op} ${value}:`);
-            Object.keys(nProbs).map(prob => push(`\t${+(nProbs[prob].toFixed(2))*100}% ~ ${prob}`))
+            nProbs.map(prob => push(`\t${+(nProbs[prob].toFixed(2))*100}% ~ ${prob}`))
+            // Object.keys(nProbs).map(prob => push(`\t${+(nProbs[prob].toFixed(2))*100}% ~ ${prob}`))
             // Object.keys(nProbs).map(prob => push(`${feature} ${op} ${value}: ${nProbs[prob]} ~ ${prob}`))
         }
     },
@@ -358,10 +323,10 @@ e.node.prototype = {
             }
             tProbs[v]++;
         };
-        // console.log(`Leaf ${nFeature} ${nValue}:`)
+        console.log(`Leaf ${nFeature}~${nValue} at ${nEntropy}:`)
         nValues.map(v => {
             nProbs[v] = tProbs[v]/nLength;
-            console.log(`\t${v} ${this.op} ${nValue} ~ ${nProbs[v].percent(2)}`);
+            console.log(`\t${v} ~ ${nProbs[v].percent(2)}`);
         });
         this.tree.admire();
     },
@@ -388,10 +353,9 @@ e.node.prototype = {
             bFeature  = split.feature,         // the feature the new node will branch on
             bData     = {},                    // the data that will be passed on to the different nodes
             bLeaf     = split.leaf,
-            bValues   = [];
-        if (!nData) debugger;
-        let groupData   = this.criterion == 'gain'?crit.group({data: nData, feature: bFeature}):
-                                            crit.group({data: nData, feature: bFeature, value: split.value, op: this.op})
+            bValues   = [],
+            groupData   = this.criterion == 'gain'?crit.group({data: nData, feature: bFeature}):
+                                            crit.group({data: nData, feature: bFeature, value: split.value, op: '<='})
         // Faster method... but harder to keep track of
         let manual = () => {
             let tData = nData.slice(0);
@@ -415,19 +379,19 @@ e.node.prototype = {
                 bvVal   = bvSplit[1],
                 bvKey   = `${bFeature}~${bvOp}~${bvVal}`;
             console.log(`New ${bLeaf?'Leaf':'Branch'} from ${nFeature}~${nValue} to ${bvKey}`);
-            this.children[bvKey] = new e.node({
+            this.children.push(new e.node({
                 data   : groupData.data[bv],
                 feature: bFeature,
                 value  : bvVal,
-                id     : bvKey,
+                key    : bvKey,
                 op     : bvOp,
                 // value is the key of node data
                 tree   : this.tree,
                 parent : this,
                 depth  : nDepth+1,
                 isLeaf : bLeaf
-            });
-        });
+            }))
+        })
         this.climbed = true;
         this.tree.admire();
     }

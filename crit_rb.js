@@ -270,8 +270,7 @@ const  calc = {
                     let x       = data[i],
                         xiValue = x[feature],
                         check   = calc.compare(xiValue, value, op),
-                        retOp = check?op:calc.reverse(op),
-                        key     = `${retOp}\|${value}`;
+                        key     = `${check?'':'!'}${op}\|${value}`;
                     if  (!ret.data[key]) {
                         ret.data[key] = [];
                         ret.values.push(key);
@@ -312,9 +311,7 @@ const  calc = {
             return ht;
         },
         compare: function compareValues(val1, val2, type = '==') {
-            // if (type.indexOf('!') >= 0) debugger;
-            let nop = type.indexOf('!') >= 0? calc.reverse(type):type;
-            switch (nop) {
+            switch (type) {
                 case '<=':
                     return val1 <= val2;
                 case '>=':
@@ -324,25 +321,7 @@ const  calc = {
                 case '>':
                     return val1 > val2;
                 default:
-                    // debugger;
                     return val1 == val2;
-
-            }
-        },
-        reverse: function reverseValues(op){
-            switch (op.replace('!', '')) {
-                case '<=':
-                    return '>';
-                case '>=':
-                    return '<';
-                case '<':
-                    return '>=';
-                case '>':
-                    return '<=';
-                case '==':
-                    return '!=';
-                case '!=':
-                    return '==';
             }
         },
         gain: (options = {}) => {

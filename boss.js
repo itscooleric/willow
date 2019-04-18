@@ -10,13 +10,14 @@
  */
 let cluster   = require('cluster'),
     chalk     = require('chalk'),
+    pc        = require('os-utils.js'),
     sp        = new Array(7 - (process.pid+'').length).fill(' ').join(''),
     { spawn } = require('child_process'),
     _         = {
-      workers: [],
-      online : 0,
-      onclock: 0,
-      cob    : true,
+      workers : [],
+      online  : 0,
+      onclock : 0,
+      cob     : true,
       employed: false,
     },
     
@@ -53,10 +54,6 @@ _.conLog = msg => {
         }
         else return tj;
     } else {
-        // let te = (new Error().stack.toString().split('\n')[3].match(/\((.*)\)/)||['',''])[1];
-        // te = te.length > 0?`\t[${te.slice(te.lastIndexOf('\\'))}]`:'';
-        // // return `${msg}\nfrom: ${(new Error().stack.toString().match(/\((.*)\)/)||['',''])[1]}`;
-        // return `${msg}${te}`;
         return msg?msg.stack||msg:'no msg :[';
     }
 };
@@ -89,8 +86,39 @@ _.init = mission => {
     if (cluster.isMaster) masterInit();
     else childInit();
 }
-
-
+_.pc = {
+    usage: async () => {
+        let totalmem = pc.totalmem(),
+            freemem  = pc.freemem(),
+            ret      = {
+                memory: {
+                    total: totalmem,
+                    free : freemem,
+                    used : totalmem-freemem
+                },
+                cpu: {
+                    count: pc.cpuCount(),
+                    usage: await _.pc.cpu(),
+                    free : await _.pc.cpu(true)
+                },
+                system: {
+                    platform     : pc.platform(),
+                    processUptime: pc.processUptime(),
+                    systemUptime : pc.systemUptime()
+                }
+            }
+    },
+    memory: (free = false) => new Promise((resolve, reject) => {
+        let total = pc.totalmem(),
+            used = total - pc.freemem();
+        if (free) resolve(total - used);
+        else resolve(used);
+    }),
+    cpu: (free = false) => new Promise((resolve, reject) => {
+        if (free) pc.cpuFree(v => resolve(v))
+        else pc.cpuUsage(v => resolve(v))
+    }),
+}
 // ********************************
 //      MASTER FUNCTION SECTION
 // Launches all of the workers based on the number of CPUs
@@ -326,6 +354,9 @@ function masterRecv(work, guy){
 
             // Work evaluation function
             _.evalFunction(work.success, work.result, task)
+
+            // Get specs on performance
+            if (_.debug) boss.out()
 
         }
     } catch (err) {
