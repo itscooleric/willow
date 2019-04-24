@@ -77,14 +77,14 @@ const fs = require('fs'),
             }
         },
         ascend: function(key = false, set = true){
-            let sorted = key?this.sort((a, b) => a[key] - b[key])
-                :this.sort((a, b) => a - b);
+            let sorted = key?this.sort((a, b) => a[key] > b[key]?-1:1)
+                :this.sort((a, b) => a > b?-1:1);
             // if (set)  this.set(sorted);
             return sorted;
         },
         descend: function(key = false, set = true){
-            let sorted = key?this.sort((b, a) => a[key] - b[key])
-                :this.sort((b, a) => a - b);
+            let sorted = key?this.sort((b, a) => a[key] > b[key]?-1:1)
+                :this.sort((b, a) => a > b?-1:1);
             // if (set) this.set(sorted);     
             return sorted;
         },
@@ -450,11 +450,17 @@ const fs = require('fs'),
         // Data stuff
         report: function saveFileAsReport(loc = 'C:/Users/N36-1/Documents/_Codebox/codeboxReport.csv', delimeter = ',', quotes = true){
             let fileStamp = new Date().stamp(true),
-                loc2 = loc.replace(/ /g, '_').toUpperCase().replace('.', '_'+fileStamp+'.');
+                loc2 = loc.replace('.', '_'+fileStamp+'.').replace(/ /g, '_').toUpperCase();
             console.log(`Exporting ${loc.slice(loc.lastIndexOf('/'))} as ${loc2.slice(loc.lastIndexOf('/'))}`);
             return this.write(loc2, delimeter, quotes);
         },
-
+        /**
+         * 
+         * @param {String} fileName name of the file to be written
+         * @param {String} delimeter the delimeter used for the dsv
+         * @param {Boolean} quotes whether the cells should be within quotes
+         * @param {*} rob 
+         */
         write: function (fileName = false, delimeter = '\t', quotes = true, rob = false){
             return new Promise((resolve, reject) => {
                 try {
@@ -546,13 +552,13 @@ const fs = require('fs'),
             this.splice(0)
             for (let i = 0, il = data.length; i < il; i++) this.push(data[i]);
         },
-        parseInt: function () {
+        parseInt: function (cols = false) {
             let len = this.length,
                 wid = Object.keys(this[0]).length,
                 cells = len*wid,
                 start = performance.now(),
                 // method = Math.random()*2 > 1,
-                nkeys = Object.keys(this[0]);
+                nkeys = cols || Object.keys(this[0]);
             if (1 == 2) for (let i = 0; i < len; i++){
                 let t = this[i];
                 nkeys.map(k => t[k] = +(t[k]))///^[0-9.]*$/.test(t[k])?+t[k]:t[k]);
@@ -815,11 +821,8 @@ e = {
     read: (loc, fast = false) => new Promise((resolve, reject) => {
         e.open(loc)
         .then(data => {
-            // console.log(e.ext(loc));
             switch (e.ext(loc)){
-                case('.TXT'):
                 case('.txt'):
-                case('.CSV'):
                 case('.csv'):
                     papa.parse(data, {
                         header: true,
@@ -858,7 +861,7 @@ e = {
             debugger;
         }
     },
-    report: (data, loc, delimeter = ',') => {
+    report: (data, loc, delimeter = '\t') => {
         let fileStamp = new Date().stamp(true),
             loc2 = loc.replace('.', fileStamp+'.').replace(/ /g, '_').toLowerCase();
         console.log(`Exporting ${loc.slice(loc.lastIndexOf('/'))} as ${loc2.slice(loc.lastIndexOf('/'))}`);
@@ -980,7 +983,7 @@ e.task = {
                     id      : ti,
                     name    : name,
                     start   : start,
-                    il      : count,
+                    il      : taskLength,
                     i       : 0,
                     status  : '',
                     msg     : '',
@@ -988,7 +991,7 @@ e.task = {
                     etc     : 0,
                     complete: null
                 };
-            t.setMsg = msg => t.msg = msg;
+            t.msg = msg =>  console.log(msg)
             t.end = (quit = t.i < t.il, reason = 'Something broke') => {
                 if (!quit){
                     t.status = 'Complete';
@@ -1015,11 +1018,10 @@ e.task = {
                     name     : t.name,
                     progress : progress+'%',
                     count    : t.i+'/'+t.il,
-                    elapsed  : elapsed.time(true),
+                    elapsed  : tb.time(elapsed, true),
                     estimated: `${/Invalid|NaN/i.test(estimatedTime)?'End of Time':estimatedTime}`,
                     msg      : t.msg,
                 };
-                e.table(t.table);
                 if (t.i < t.il && !t.complete) t.timeout();
                 else t.end()
             }

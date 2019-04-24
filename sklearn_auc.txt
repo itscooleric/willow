@@ -1,0 +1,12 @@
+Predicted Result   0   1
+Actual Result
+0                 98   2
+1                  1  49
+threshold: 0.5
+len: 150
+roc: 0.98
+precision: 0.9607843137254902
+TP: 49
+FP: 2
+TN: 98
+FN: 1
