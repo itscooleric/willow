@@ -60,52 +60,81 @@ const init = async () => {
             data  : await util.read('./sklearn/iris/iris.csv'),
             target: 'class'
         },
+        credit: {
+            data  : await util.read('./sklearn/credit/credit.csv'),
+            target: 'class'
+        },
     }
-    sample.iris.data.parseInt();
-    let ft = crit.bestSplitFeature(Object.assign({
-        feature: 'petal_width',
-        data   : sample.iris.data,
-        target : sample.iris.target,
-        // debug  : true
-        min    : 5
-    }))
-    // console.log(ft);
-    // let goodRun = require('./willow_rb.js');
-    // var will = await new willow.tree({
-    //     minSplit: 5,
-    //     data    : sample.iris.data,
-    //     target  : sample.iris.target
-    // }).fit();
-    // console.log(will);
-    // let json = await will.save();
-    // await util.write(json, 'will-test.json')
-    let will2 = await willow.load(await util.read('will-test.json'));
-    await will2.fit({
+    // let m1 = () => crit.entropy(sample.credit.data, 'class') == 0,
+    //     m2 = () => sample.credit.data.options('class').length == 1;
+    
+    // // console.log('Original Method');
+    // // for (let i = 0; i < 10; i++) console.log(util.speed(m1, 10000))
+    // // debugger;
+    // console.log('New Method');
+    // for (let i = 0; i < 10; i++) console.log(util.speed(m2, 10000))
+    // debugger;
+
+    // let originalMethod = (options = {}) => {
+    //     var data = options.data || 'data',
+    //         water = options.water || 'water',
+    //         monkey = options.monkey || 'monkey',
+    //         buffalo = options.buffalo || 'buffalo',
+    //         falco = options.falco || 'falco';
+    //     return {data, water, monkey, buffalo, falco}
+    // },
+    // newMethod = (options = {}) => {
+    //     var data    = util.default(options.data, 'data'),
+    //         water   = util.default(options.water, 'water'),
+    //         monkey  = util.default(options.monkey, 'monkey'),
+    //         buffalo = util.default(options.buffalo, 'buffalo'),
+    //         falco   = util.default(options.falco, 'falco');
+    //     return {data, water, monkey, buffalo, falco}
+    // };
+    // console.log('Original Method');
+    // for (let i = 0; i < 10; i++) console.log(util.speed(originalMethod, 10000))
+    // debugger;
+    // console.log('New Method');
+    // for (let i = 0; i < 10; i++) console.log(util.speed(newMethod, 10000))
+    // debugger;
+    
+    sample.credit.data.parseInt(['a01', 'a02','a03', 'a08', 'a11', 'a14', 'a15']);
+    sample.credit.data.parseInt();
+    console.log(sample.credit.data[0])
+    var will = await new willow.tree({
         minSplit: 5,
-        data    : sample.iris.data,
-        target  : sample.iris.target
-    })
-    // console.log(will2);
-    // will2.print();
-    let test = JSON.parse(JSON.stringify(sample.iris.data[0]));
-    console.log(`Class is ${test.class}`);
-    // delete test.class;
-    // delete test.petal_length;
-    // delete test.sepal_length;
+        maxDepth: 5,
+        data    : sample.credit.data,
+        target  : sample.credit.target
+    }).fit();
+    console.log(will);
+    let json = await will.save();
+    await util.write(json, 'will-test.json')
+
     // let sklearn =await  boss.python.run('sklearn/tree_example.py', '', msg => { // can add back after rmeoval of chalk watermelon
     //     boss.pylog(msg);
     // })
-    let res = await will2.predict(sample.iris.data),
-        score = await will2.score();
-    console.log(score);
+
+    // let will2 = await willow.load(await util.read('will-test.json'));
+    // await will2.fit({
+    //     minSplit: 3,
+    //     data    : sample.credit.data,
+    //     target  : sample.credit.target
+    // })
+    
+    let res = await will.predict(sample.credit.data),
+        score = await will.score();
+    // Okay testing expand
+    console.log('Testing expansion!')
+    console.log(res[0])
+    res.expand()
+    console.log('After Expansion:')
+    console.log(res[0])
+    await res.write('ValidatingScores.csv')
+    
+    let ess = ['ppv', 'auc','tp', 'fp','tn', 'fn'],
+        esx = Object.values(score).map(a => ess.map(b => `${b}: ${a[b]}`).join('\n')).join('\n\n');
+    console.log(esx);
     debugger;
-    // let sampleKeys = ['outlook', 'humidity', 'temperature', 'wind'];
-    // console.log(`Multiple`)
-    // console.log(profiler(() => sampleKeys.map(a => crit.gini(sample.weather.data,a, 'play')), 1000000));
-    // console.log(`\nOptimized`);
-    // console.log(profiler(() => crit.giniOptimized(sample.weather.data, 'play'), 1000000));
-    // // crit.giniOptimized(sample.weather.data, 'play');
-    // debugger;
-    // new tree(sample.weather).fit()
 }
 init();

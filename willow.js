@@ -4,6 +4,12 @@
  *
  * example datasets: http://archive.ics.uci.edu/ml/index.php && ftp://ftp.ics.uci.edu/pub/machine-learning-databases/
  * ml stuff: ftp://ftp.ics.uci.edu/pub/
+ * 
+ * TODO:
+ *  Parameters:
+ *      Add random seed
+ *      Add random to gain criteria
+ *      
  *
  */
 const util        = require('./util.js'),
@@ -13,11 +19,13 @@ const util        = require('./util.js'),
      * Initialize a decision tree
      */
 e.tree = function decisionTree(options = {}){
-    this.data      = options.data || [];
-    this.target    = options.target || false;
+    this.data      = options.data     || [];
+    this.target    = options.target   || false;
     this.minSplit  = options.minSplit || 5;
-    this.maxDepth  = options.maxDepth || false;
+    this.maxDepth  = options.maxDepth || 5;
+    this.splitter  = options.splitter || 'best';
     let target = this.target;
+    this.stack = 0;
     try {
         // console.log(this.data[0]);
         this.features  = this.features || options.features || [];
@@ -49,10 +57,11 @@ e.node = function decisionTreeNode(options, queueSplit = true){
     this.parent   = options.parent  || false;
     // this.id       = this.tree.nodeCount;
     // this.tree.nodeCount++;
+    // if (!options.value) debugger;
     this.depth     = options.depth   || 0;
     // this.entropy   = crit.entropy(this.data, this.tree.target);  //options.entropy;           // starting entropy for this node
     this.feature   = options.feature ||'root';                   // feature this node was branched on
-    this.value     = options.value   ||'root';                   // value of the feature of this node
+    this.value     = options.value !== undefined? options.value:'root';                   // value of the feature of this node
     this.isRoot    = options.isRoot  || false;                   // will determine if we need to add it to the nodes
     this.isLeaf    = options.isLeaf  || false;                   // if it's a leaf, we won't split
     this.op        = options.op      || '<=';
@@ -66,11 +75,13 @@ e.node = function decisionTreeNode(options, queueSplit = true){
     if (queueSplit){
         if (!this.data) debugger;
         // Only get the best split if it isn't a leaf
-        if (!this.split && !this.isLeaf) this.split = this._selectFeature({data: this.data, fy: this.target});
+        // if (this.tree.stack == 6) debugger;
+        if (!this.split && !this.isLeaf) this.split = this._selectFeature({data: this.data, fy: this.target, splitter: this.tree.splitter});
+        // if (this.split.value == false) debugger;
         // this.id        = options.id||`${this.feature}_${this.value}`;
         // if (this.value == '<=|0.8') debugger;
         // THIS IS THE CURSED LINE!!!
-        if (!this.isRoot && !this.isLeaf) this.isLeaf =  this.split.score == 1 || this.split.score == 0;
+        if (!this.isRoot && !this.isLeaf) this.isLeaf =  this.split.leaf || this.split.score == 1 || this.split.score == 0;
         // if (this.parent && !this.isLeaf) this.isLeaf =  this.parent.split.score == 1 || this.parent.split.score == 0;
         // debugger;
         if (!options.isRoot){
@@ -147,12 +158,15 @@ e.save = async function saveToJSON(model, keepData = false) {
 e.tree.prototype = {
     // Determine what the variable should be used to split...
     fit: async function trainModel(options = {}){
+        this.stack = 0;
+        // this.data = options.data;
         if (options.constructor == Array){
             // Options is a dataset
             this.data = options;
         } else {
             // Options object
             Object.keys(options).map(a => this[a] = options[a]);
+            // this.data = options.data;
         }
         if (this.data.length > 0){
             this.classes = this.data.options(this.target);
@@ -200,11 +214,15 @@ e.tree.prototype = {
             this.print();
             // debugger;
         } else {
+            this.stack++;
+            if (this.stack % 100 == 0) console.log(`Stack size is now ${this.stack}`)
             // can be optimized here using pop instead or an object
             let nextNode = this.queue.shift();
-            console.log(`~~ Admiring ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
+            if (e.debug) console.log(`~~ Admiring ${nextNode.isLeaf?'Leaf':'Branch'} at ${nextNode.feature}_${nextNode.value}`)
             // switch (!nextNode.isLeaf){
-            switch (!nextNode.isLeaf && (!nextNode.tree.maxDepth || nextNode.tree.maxDepth >= nextNode.depth)){
+                
+            if (!nextNode.isRoot) if (nextNode.parent.isLeaf) debugger;
+            switch (!nextNode.isLeaf){
                 case true:
                     nextNode.branch();
                     break;
@@ -239,15 +257,30 @@ e.tree.prototype = {
                     reachedLeaf = kid.isLeaf;
                     curNode     = kid;
                 }
-            }
+            } 
+            if (!foundKid) debugger;
         };
-        let ret = {},
+        let ret = {
+            best: {
+                value: '',
+                willobability: 0
+            }
+        },
             fam = curNode.children,
             sumValues = Object.values(fam).reduce((a, b) => a + b.proba, 0);
             /**
              * TODO OptimizeMe Watermelon -- maybe make it calculate all options at leaf()
              */
-        this.classes.map(a => ret[a] = {willobability: fam[a]?fam[a].willobability:1-sumValues, willowiction: a});
+        this.classes.map(a => {
+            ret[a] = {willobability: fam[a]?fam[a].proba:1-sumValues, willowiction: a}
+            try{
+                if (ret[a].willobability > ret.best.willobability) ret.best = ret[a]
+            } catch(err){
+                console.error(err);
+                debugger;
+            }
+        });
+        
         // console.log(Object.values(ret).map(a => a.proba))
         // options.map(a => best = fam[a] > best?  fam[a]: best);
         // console.log(best);
@@ -299,10 +332,19 @@ e.tree.prototype = {
                 case Object:
                     return this.predictOne(input);
                 case Array:
+                    let times = [],
+                        start = Date.now();
                     for (let i = 0, il = input.length; i < il; i++){
                         let po = await this.predictOne(input[i]),
-                            rpo = withInput?Object.assign({}, input[i], po):po;
+                            rpo = withInput?Object.assign({}, input[i], po):po,
+                            mom = Date.now()
                         result.push(rpo);
+                        times.push(mom - start);
+                        start = mom;
+                        if (times.length == 100) {
+                            console.log(times.stats())
+                            debugger;
+                        }
                     }
                     return result;
                 default:
@@ -354,12 +396,13 @@ e.tree.prototype = {
                 // WATERMELON TODO NOT PICKING UP POSITIVES FIXME
                 for (let i = 0; i < il; i++){
                     let predProb = pred[i].willobability,
+                        predRes = predProb >= threshold
                         actuRes  = pred[i][target] == pred[i].willowiction?1:0,
                         // Is value equal to the class we're looking at
-                        pos_neg = predProb >= threshold?'p':'n',
+                        pos_neg = predRes == 1?'p':'n',
                         // Is the prediction accurate
-                        tru_fal = predProb == actuRes?'t':'f';
-                    if (predProb > 0) debugger;
+                        tru_fal = predRes == actuRes?'t':'f';
+                    // if (predProb > 0) debugger;
                     r[tru_fal+pos_neg]++;
                     r[tru_fal]++;
                     r[pos_neg]++;
@@ -367,7 +410,7 @@ e.tree.prototype = {
                     r.auc += predProb * tfalse;
                 }
                 // Calculations for after the run! Source https://en.wikipedia.org/wiki/Confusion_matrix
-                r.auc /= tfalse * (il - tfalse);
+                r.auc = 1 - (r.auc/( tfalse * (il - tfalse)));
                 // True Positive Rate / Sensitivity / Recall / Hit Rate (TPR)
                 r.tpr = r.tp/r.p;
                 // Miss Rate / False Negative Rate
@@ -465,6 +508,8 @@ e.node.prototype = {
         // debugger;
             // push   = str => output.push(`${tabs}${str}`);
         if (!this.isLeaf){
+            let nextIsPred = Object.values(this.children)[0].proba?'pred':'node';
+            if (nextIsPred  == 'pred') debugger;
             let nKids = this.children;
             if (!this.isRoot) push(`${feature} ${op} ${value}:`);
             else push(`TREE ROOT\n-------`)
@@ -509,20 +554,31 @@ e.node.prototype = {
                 value: v,
                 proba: tProbs[v]/nLength
             };
-            console.log(`\t${v} ${this.op} ${nValue} ~ ${nProbs[v].proba.percent(2)}`);
+            if (e.debug) console.log(`\t${v} ${this.op} ${nValue} ~ ${nProbs[v].proba.percent(2)}`);
         });
         this.tree.admire();
     },
     _selectFeature: function (options = {}) {
         let criterion = this.criterion,
+            splitter = options.splitter || 'best',
             data      = options.data || this.data,
-            best      = crit[criterion]({
-                data  : data,
-                target: this.target,
-                min   : options.minSplit || this.minSplit
+            isLeaf = data.options(this.target).length == 1;
+        if (isLeaf) return {
+            score  : 0,
+            feature: false,
+            value  : false,
+            leaf   : true
+        }
+        if (this.tree.stack % 100 == 0) console.log(`Stack size is now ${this.tree.stack}\n Picking feature with target being ${this.target} and ${data.length} items`)
+        let split      = crit[criterion]({
+                data    : data,
+                target  : this.target,
+                min     : options.minSplit || this.minSplit,
+                splitter: options.splitter
             }),
-            leaf = best.score == 0;
-        return Object.assign(best, {leaf});
+            leaf = split.score == 0;
+        // if (split.value == false) debugger;
+        return Object.assign(split, {leaf});
     },
     // _stoppingCriteria = function () {
 
@@ -537,6 +593,7 @@ e.node.prototype = {
             bData     = {},                    // the data that will be passed on to the different nodes
             bLeaf     = split.leaf,
             bValues   = [];
+        if (bLeaf || nData.length < this.minSplit || nDepth == this.maxDepth) debugger;
         if (!nData) debugger;
         let groupData   = this.criterion == 'gain'?crit.group({data: nData, feature: bFeature}):
                                             crit.group({data: nData, feature: bFeature, value: split.value, op: this.op})
@@ -553,24 +610,28 @@ e.node.prototype = {
                 bData[v].push(r);               // Add record to the node data set
             };
         };
+        // if (this.tree.stack == 20) debugger;
         // debugger;
         let tTree   = this.tree,
             tParent = this,
             tKids   = this.children;
         Object.values(groupData).map(bv =>{
-            let bvKey   = `${bFeature}~${bv.op}~${bv.value}`;
+            let bvKey   = `${bFeature}~${bv.op}~${bv.value}`,
+                nLeaf = bv.data.length <= tTree.minSplit || nDepth == tTree.maxDepth || false;
+            // if (nLeaf) debugger;
             // console.log(`New ${bLeaf?'Leaf':'Branch'} from ${nFeature}~${bv.value} to ${bvKey}`);
+            // if (bv.value === false) debugger;
             tKids[bvKey] = new e.node({
                 data   : bv.data,
                 feature: bFeature,
                 value  : bv.value,
-                id     : bvKey,
+                key     : bvKey,
                 op     : bv.op,
                 // value is the key of node data
                 tree   : tTree,
                 parent : tParent,
                 depth  : nDepth+1,
-                isLeaf : bLeaf
+                isLeaf : nLeaf
             });
         });
         this.climbed = true;

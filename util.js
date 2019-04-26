@@ -77,10 +77,15 @@ const fs = require('fs'),
             }
         },
         ascend: function(key = false, set = true){
-            let sorted = key?this.sort((a, b) => a[key] > b[key]?-1:1)
-                :this.sort((a, b) => a > b?-1:1);
-            // if (set)  this.set(sorted);
-            return sorted;
+            try{
+                let sorted = key?this.sort((a, b) => a[key] > b[key]?-1:1)
+                    :this.sort((a, b) => a > b?-1:1);
+                // if (set)  this.set(sorted);
+                return sorted;
+            } catch (err){
+                console.error(err);
+                debugger;
+            }
         },
         descend: function(key = false, set = true){
             let sorted = key?this.sort((b, a) => a[key] > b[key]?-1:1)
@@ -190,6 +195,16 @@ const fs = require('fs'),
                 return false;
             }
         },
+        // values: function (key){
+        //     if (key) {
+        //         let ret = [];
+        //         for (let i = 0, il = this.length; i < il; i++) ret.push(this[i][key])
+        //         return ret;
+        //     }else {
+        //         console.err('No key selected')
+        //         return false;
+        //     }
+        // },
         options: function (key) {
             return this.values(key).unique()
         },
@@ -219,6 +234,23 @@ const fs = require('fs'),
             for (var key in obj) newArr.push(obj[key]);
             return newArr;
         },
+        // unique: function removeDuplicates(prop = false) {
+        //     var obj = {},
+        //         oret = [];
+        //     if (prop) {
+        //         this.map(a => {
+        //             if (!obj[a[prop]]) {
+        //                 obj[a[prop]] = a;
+        //                 oret.push(a)
+        //             }
+        //         })
+        //     } else for (var i = 0, len = this.length; i < len; i++) {
+        //         if (!obj[this[i]]) obj[this[i]] = this[i];
+        //     }
+        //     // var newArr = [];
+        //     // for (var key in obj) newArr.push(obj[key]);
+        //     return Object.values(oret);
+        // },
         uniqueExcept: function removeDuplicates(prop = false, except = false) {
             var obj = {},
                 keys = Object.keys(this[0]).filter(a => a != prop && !except.includes(a));
@@ -552,6 +584,18 @@ const fs = require('fs'),
             this.splice(0)
             for (let i = 0, il = data.length; i < il; i++) this.push(data[i]);
         },
+        expand: function (keys = false){
+            let x = this[0], 
+                karr = keys || Object.keys(x).filter(a => x[a].constructor == Object),
+                karo = [];
+            karr.map(a => Object.keys(x[a]).map(b => karo.push([a, b])))
+            for (let i = 0, il = this.length; i < il; i++){
+                let a = this[i];
+                karo.map(k => a[k.join('_')] = a[k[0]][k[1]])
+                karr.map(k => delete a[k]);
+            }
+            return this;
+        },
         parseInt: function (cols = false) {
             let len = this.length,
                 wid = Object.keys(this[0]).length,
@@ -752,23 +796,42 @@ const fs = require('fs'),
     }
 };
 e = {
-    speed: function getFunctionSpeed (fnArr, limit = 10000) {
-        let fns = fnArr.constructor == Array?fnArr:fnArr.constructor == Function?[fnArr]:false,
-            res = [];
-        if (fns) {
-            fns.map(a => {
-                let perf = a.perf(limit);
-                res.push(Object.assign({
-                    name: a.name,
-                    fn  : a,
-                }, perf));
-            })
-            res = res.sort((a, b) => a.total > b.total?1:-1);
-            console.log(`Evaluated ${fns.length} functions ${limit} times; Fastest is ${per[0].name}`);
-            console.log(res)
-        } else {
-            console.log(`Invalid arguments selected, sorry friend :(`)
+    // speed: function getFunctionSpeed (fnArr, limit = 10000) {
+    //     let fns = fnArr.constructor == Array?fnArr:fnArr.constructor == Function?[fnArr]:false,
+    //         res = [];
+    //     if (fns) {
+    //         fns.map(a => {
+    //             let perf = a.perf(limit);
+    //             res.push(Object.assign({
+    //                 name: a.name,
+    //                 fn  : a,
+    //             }, perf));
+    //         })
+    //         res = res.sort((a, b) => a.total > b.total?1:-1);
+    //         console.log(`Evaluated ${fns.length} functions ${limit} times; Fastest is ${per[0].name}`);
+    //         console.log(res)
+    //     } else {
+    //         console.log(`Invalid arguments selected, sorry friend :(`)
+    //     }
+    // },
+    speed: function (fn, limit = 10000){
+        let res = [];
+        while (res.length < limit){
+            let start = performance.now();
+            fn()
+            res.push(performance.now() - start)
         }
+        res = res.sort((a, b) => a > b?1:-1);
+        let sum =  res.reduce((a, b) => a + b, 0),
+            ret = {
+            min   : res[0],
+            max   : res[limit-1],
+            total : sum,
+            mean  : sum/limit,
+            median: res[limit/2-1],
+            limit
+        }
+        return ret;
     },
     move: (loc1, loc2) => new Promise((resolve, reject) => {
         fs.rename(loc1, loc2, err => {
@@ -964,7 +1027,11 @@ e = {
                 }, interval);
         })
     },
-    exists: path => fs.existsSync(path)
+    exists: path => fs.existsSync(path),
+    default: (input, backup) => {
+        if (input === undefined) return backup;
+        else return input;
+    }
 };
 /** 
  * Task Estimated Time of Completion Section
