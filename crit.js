@@ -479,6 +479,84 @@ const  calc = {
             seed = options.seed || 2,
             ind = Math.floor(Math.random()*data.length);
         return data? data[ind]:ind;
+    },
+    /**
+     * TODO!!! WATERMELON!!!
+     * Check JS eval scores against python eval scores
+     * Add importances
+     * Add parameter tuning
+     * @param {*} options 
+     */
+    score: async function getPerformanceInfoAboutModel(options = {}){
+        try {
+            
+            // demster shafer to calculate uncertainty
+            let dataset       = options.data || [],
+                threshold  = options.threshold || .5,
+                target     = options.target || 'class',
+                prediction = options.prediction || 'pred',
+                // positive = options.positive || data[0][target],
+                // result     = {},
+                il         = dataset.length,
+                result     = {auc: 0, tp: 0, fp: 0, tn: 0, fn: 0, p: 0, n: 0, t: 0, f: 0},
+                pred       = dataset.sort((a, b) => a[prediction] >= b[prediction]? -1:1),
+                tfalse      = 0,
+                r = result;
+                // WATERMELON TODO NOT PICKING UP POSITIVES FIXME
+            for (let i = 0; i < il; i++){
+                let predProb = pred[i][prediction],
+                    predRes = predProb >= threshold?1:0,
+                    actuRes  = pred[i][target],//== positive?1:0,
+                    // Is value equal to the class we're looking at
+                    pos_neg = predRes == 1?'p':'n',
+                    // Is the prediction accurate
+                    tru_fal = predRes == actuRes?'t':'f';
+                // if (predProb > 0) debugger;
+                r[tru_fal+pos_neg]++;
+                r[tru_fal]++;
+                r[pos_neg]++;
+                tfalse += (1 - predProb);
+                r.auc += predProb * tfalse;
+            }
+            // Calculations for after the run! Source https://en.wikipedia.org/wiki/Confusion_matrix
+            r.auc = 1 - (r.auc/( tfalse * (il - tfalse)));
+            // True Positive Rate / Sensitivity / Recall / Hit Rate (TPR)
+            r.tpr = r.tp/r.p;
+            // Miss Rate / False Negative Rate
+            r.fnr = 1 - r.tpr;
+            // True Negative Rate / Specificity / Selectivity (TNR)
+            r.tnr = r.tn/r.n;
+            // False Positive Rate / Fall-Out 
+            r.fpr = 1 - r.tnr;
+            // Precision / Positive Predictive Value (PPV)
+            r.ppv = r.tp/ (r.tp+ r.fp);
+            // False Discovery Rate (FDR)
+            r.fdr = 1 - r.ppv;
+            // Negative Predictive Value (NPV)
+            r.npv = r.tn/(r.tn+r.fn)
+            // False Omission Rate (FOR)
+            r.for = 1 - r.npv;
+            // ----- Even Deeper ---------//
+            // Accuracy (ACC)
+            r.acc = (r.tp + r.tn)/(r.p + r.n)
+            // F1 / Harmonic Mean of Precision and Sensitivity
+            r.f1 = 2 * r.tp / (2 * r.tp + r.fp + r.fn)
+            // Matthews Correlation Coefficient (MCC) - https://en.wikipedia.org/wiki/Matthews_correlation_coefficient
+            r.mcc = (r.tp * r.tn - r.fp * r.fn)/ Math.sqrt((r.tp + r.fp) * (r.tp+r.fn) * (r.tn+r.fp) * (r.tn+r.fn))
+            // Informedness / Bookmarker Informedness (BM)
+            r.bm = r.tpr + r.tnr - 1;
+            // Markedness (MK) 
+            r.mk = r.ppv + r.npv - 1;
+
+            // auc assign more to the positive - randomly picking pair and model picks correctly
+            // should alwaus assign more to positive
+            // sort ascending
+            // get false probas and add true * false to auc
+            return result;
+        } catch (err){
+            console.error(err.stack);
+            return err;
+        }
     }
 };
 module.exports = calc;

@@ -14,7 +14,7 @@
  */
 var willow      = require('./willow.js'),
     util        = require('./util.js'),
-    crit        = require('./crit_rb.js'),
+    crit        = require('./crit.js'),
     // boss        = require('./boss'),// TODO Remove chalk req
     performance = require('perf_hooks').performance,
     e           = {};
@@ -64,7 +64,11 @@ const init = async () => {
             data  : await util.read('./sklearn/credit/credit.csv'),
             target: 'class'
         },
-    }
+        mushroom: {
+            data  : await util.read('./sklearn/mushroom/mushroom.csv'),
+            target: 'class'
+        },
+    };
     // let m1 = () => crit.entropy(sample.credit.data, 'class') == 0,
     //     m2 = () => sample.credit.data.options('class').length == 1;
     
@@ -98,14 +102,14 @@ const init = async () => {
     // for (let i = 0; i < 10; i++) console.log(util.speed(newMethod, 10000))
     // debugger;
     
-    sample.credit.data.parseInt(['a01', 'a02','a03', 'a08', 'a11', 'a14', 'a15']);
-    sample.credit.data.parseInt();
-    console.log(sample.credit.data[0])
+    // sample.credit.data.parseInt(['a01', 'a02','a03', 'a08', 'a11', 'a14', 'a15']);
+    // sample.credit.data.dropNA();
+    // console.log(sample.credit.data[0])
     var will = await new willow.tree({
         minSplit: 5,
         maxDepth: 5,
-        data    : sample.credit.data,
-        target  : sample.credit.target
+        data    : sample.mushroom.data,
+        target  : sample.mushroom.target
     }).fit();
     console.log(will);
     let json = await will.save();
@@ -118,18 +122,18 @@ const init = async () => {
     // let will2 = await willow.load(await util.read('will-test.json'));
     // await will2.fit({
     //     minSplit: 3,
-    //     data    : sample.credit.data,
-    //     target  : sample.credit.target
+    //     data    : sample.mushroom.data,
+    //     target  : sample.mushroom.target
     // })
     
-    let res = await will.predict(sample.credit.data),
+    let res = await will.predict(sample.mushroom.data),
         score = await will.score();
     // Okay testing expand
-    console.log('Testing expansion!')
-    console.log(res[0])
-    res.expand()
-    console.log('After Expansion:')
-    console.log(res[0])
+    // console.log('Testing expansion!')
+    // console.log(res[0])
+    // res.expand()
+    // console.log('After Expansion:')
+    // console.log(res[0])
     await res.write('ValidatingScores.csv')
     
     let ess = ['ppv', 'auc','tp', 'fp','tn', 'fn'],

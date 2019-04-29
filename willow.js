@@ -12,9 +12,10 @@
  *      
  *
  */
-const util        = require('./util.js'),
-      crit        = require('./crit.js'),
-      e = {};
+const util = require('./util.js'),
+      alea = require('./alea.js'),
+      crit = require('./crit.js'),
+      e    = {};
     /**
      * Initialize a decision tree
      */
@@ -341,10 +342,10 @@ e.tree.prototype = {
                         result.push(rpo);
                         times.push(mom - start);
                         start = mom;
-                        if (times.length == 100) {
-                            console.log(times.stats())
-                            debugger;
-                        }
+                        // if (times.length == 100) {
+                        //     console.log(times.stats())
+                        //     debugger;
+                        // }
                     }
                     return result;
                 default:

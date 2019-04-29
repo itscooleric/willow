@@ -1,0 +1,11 @@
+threshold: 0.5
+len: 8124
+
+Output for 0
+roc: 1.0
+precision: 1.0
+TP: 4208
+FP: 0
+TN: 3916
+FN: 0
+

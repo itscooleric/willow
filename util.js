@@ -613,6 +613,18 @@ const fs = require('fs'),
                 }
             }
         },
+        dropNA: function (cols = false){
+            let remLen = 0;
+            cols = cols || Object.keys(this[0]);
+            for (let i = this.length - 1; i >= 0; i--){
+                let a = this[i];
+                if (cols.map(b => a[b]).some(b => b.length == 0 || b === undefined)) {
+                    this.splice(i, 1);
+                    remLen++;
+                }
+            }
+            console.log(`Removed ${remLen} NA values from the array!`)
+        }
     },
     function: {
         speed: function (limit = 10000){
