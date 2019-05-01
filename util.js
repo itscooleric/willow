@@ -1039,6 +1039,33 @@ e = {
                 }, interval);
         })
     },
+    // WATERMELON START HERE ADD PROXY AND MULTI THREAD
+    // REMOVE CHALK FROM BOSS
+    // NPM INSTALL REQUEST!? Download Methods, 
+    // node stream api
+    // continue emscripten with activte https://emscripten.org/docs/getting_started/downloads.html#installation-instructions
+    
+    // https://github.com/i0natan/nodebestpractices
+    download: async function (url, name) {
+        let res = await fetch(url);
+        if (util.exists(name)){
+            let extLocation = name.lastIndexOf('.'),
+                ext         = name.substr(extLocation);
+                name        = name.replace(ext, `r${Date.now()}${ext}`);
+        }
+        let fileStream = fs.createWriteStream(name);
+        return await new Promise((resolve, reject) => {
+            res.body.pipe(fileStream);
+            res.body.on("error", (err) => {
+                console.error(err)
+                debugger;
+                reject(err);
+            });
+            fileStream.on("finish", function () {
+                resolve();
+            });
+        });
+    },
     exists: path => fs.existsSync(path),
     default: (input, backup) => {
         if (input === undefined) return backup;
